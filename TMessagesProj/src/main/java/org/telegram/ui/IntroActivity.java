@@ -156,9 +156,10 @@ public class IntroActivity extends BaseFragment implements NotificationCenter.No
     public View createView(Context context) {
         logoDrawable = context.getResources().getDrawable(R.drawable.telegram_logo).mutate();
         logoDrawable.setBounds(0, dp(8.666f), dp(115), dp(35));
-        SpannableStringBuilder ssb = new SpannableStringBuilder(LocaleController.getString(R.string.Page1Title));
-        ssb.setSpan(new ImageSpan(logoDrawable), 0, ssb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        SpannableStringBuilder ssb = new SpannableStringBuilder("RecGram"); // RecGram: вместо логотипа Telegram
         titles[0] = ssb;
+        messages[0] = org.recgram.RLocale.s("Telegram с записью звонков\nи без ограничений на копирование.\nНеофициальный клиент.",
+                "Telegram with call recording\nand no copy restrictions.\nUnofficial client."); // RecGram
 
 
         actionBar.setAddToContainer(false);
@@ -792,7 +793,7 @@ public class IntroActivity extends BaseFragment implements NotificationCenter.No
             loadTexture(R.drawable.intro_powerful_star, 18);
             loadTexture(R.drawable.intro_private_door, 19);
             loadTexture(R.drawable.intro_private_screw, 20);
-            loadTexture(R.drawable.intro_tg_plane, 21);
+            loadTexture(R.drawable.intro_tg_plane, 21, 0xFFFF3B30, false); // RecGram: красный самолётик
             loadTexture(v -> {
                 Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
                 paint.setColor(ThemeColors.TELEGRAM_COLOR); // It's logo color, it should not be colored by the theme
