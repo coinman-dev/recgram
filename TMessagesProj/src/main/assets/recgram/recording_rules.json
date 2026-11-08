@@ -1,0 +1,587 @@
+{
+ "version": 1,
+ "checked": "2026-11-08",
+ "default_self": "unknown",
+ "countries": [
+  {
+   "id": "AT",
+   "iso": "AT",
+   "self": "civil_prohibited",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "§120 StGB; §16 ABGB; OGH 6 Ob 190/01m, 1 Ob 1/20h",
+   "note_ru": "Fable: «можно (только запись)». Google: «нельзя по ГК». Правы оба: по уголовному праву своя запись не наказуема, но по гражданскому это нарушение «права на собственное слово». В суде — только при отсутствии иных доказательств (Beweisnotstand) или самообороне. Передача третьим — преступление (§120(2))"
+  },
+  {
+   "id": "LI",
+   "iso": "LI",
+   "self": "civil_prohibited",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "§120 StGB (австрийская модель)",
+   "note_ru": "По аналогии с Австрией, отдельно не проверялось"
+  },
+  {
+   "id": "AL",
+   "iso": "AL",
+   "self": "unknown",
+   "threat": "unknown",
+   "share_penalized": null,
+   "law": "УК ст. 121, 122 (не подтверждено)",
+   "note_ru": "Проверка 08.11: текст статей найти не удалось. Есть проект нового УК со статьёй о перехвате"
+  },
+  {
+   "id": "AD",
+   "iso": "AD",
+   "self": "unknown",
+   "threat": "unknown",
+   "share_penalized": null,
+   "law": "Codi penal",
+   "note_ru": "Fable: «серая зона, скорее да». Данных нет"
+  },
+  {
+   "id": "AM",
+   "iso": "AM",
+   "self": "unknown",
+   "threat": "limited",
+   "share_penalized": null,
+   "law": "УК РА 2021",
+   "note_ru": "Google: риск уголовной ответственности, при угрозах — необходимая оборона. Практика не найдена"
+  },
+  {
+   "id": "AZ",
+   "iso": "AZ",
+   "self": "unknown",
+   "threat": "limited",
+   "share_penalized": null,
+   "law": "УК ст. 155, 156",
+   "note_ru": "То же"
+  },
+  {
+   "id": "BY",
+   "iso": "BY",
+   "self": "allowed_court_limited",
+   "threat": "limited",
+   "share_penalized": false,
+   "law": "УК ст. 179, 203; УПК ст. 103",
+   "note_ru": "Google исправил Fable: в уголовном процессе запись угроз принимают, в гражданском и административном запись без предупреждения отклоняют"
+  },
+  {
+   "id": "BE",
+   "iso": "BE",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "Code pénal ст. 314bis",
+   "note_ru": "Запрет только для неучастников"
+  },
+  {
+   "id": "BG",
+   "iso": "BG",
+   "self": "civil_prohibited",
+   "threat": "no",
+   "share_penalized": true,
+   "law": "Конституция ст. 32(2); УК ст. 171(3); РС Ихтиман № 5/2023; ВКС № 456/2012",
+   "note_ru": "Fable: серая зона. Google: прямой запрет Конституции, есть гражданские взыскания. В уголовном суде такие записи не принимают"
+  },
+  {
+   "id": "BA-FB",
+   "iso": "BA",
+   "self": "allowed_court_limited",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "KZ FBiH ст. 188; KZ BD",
+   "note_ru": "Нужен выбор региона. Наказуемо ознакомление посторонних",
+   "region_ru": "Федерация БиГ и округ Брчко",
+   "region_en": "Federation of BiH and Brčko District"
+  },
+  {
+   "id": "BA-SRP",
+   "iso": "BA",
+   "self": "intent_misuse",
+   "threat": "yes",
+   "share_penalized": true,
+   "law": "KZ RS",
+   "note_ru": "Наказуема запись адресованного вам заявления «с намерением злоупотребить»",
+   "region_ru": "Республика Сербская",
+   "region_en": "Republika Srpska"
+  },
+  {
+   "id": "VA",
+   "iso": "VA",
+   "self": "unknown",
+   "threat": "unknown",
+   "share_penalized": null,
+   "law": "—",
+   "note_ru": "Данных нет"
+  },
+  {
+   "id": "GB",
+   "iso": "GB",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "IPA 2016; UK GDPR; Jones v Univ. of Warwick [2003]; s.78 PACE",
+   "note_ru": "В Шотландии — Lawrie v Muir. Публикация — риск по законам о приватности"
+  },
+  {
+   "id": "HU",
+   "iso": "HU",
+   "self": "civil_prohibited",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "Ptk. §2:48; Btk. §422",
+   "note_ru": "Fable: серая зона. Google: согласие нужно и на запись, и на использование. Запись угрозы при отсутствии иных доказательств — не злоупотребление"
+  },
+  {
+   "id": "DE",
+   "iso": "DE",
+   "self": "criminal_prohibited",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "§201 StGB (до 3 лет, покушение наказуемо)",
+   "note_ru": "Оправдание только при необходимой обороне или крайней необходимости (§32, §34), например запись шантажиста. Обычный интерес в доказательстве не оправдывает"
+  },
+  {
+   "id": "GR",
+   "iso": "GR",
+   "self": "criminal_prohibited",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "ПК ст. 370A(2); Конституция ст. 19(3)",
+   "note_ru": "Проверено 08.11: действующий текст ст. 370A(2) прямо охватывает запись участником «своей беседы с другим без его явного согласия», наказание — κάθειρξη (тюрьма) до 10 лет. Google ошибочно писал «проступок». Ареопаг допускает запись лишь в крайних случаях (ст. 25 ПК)"
+  },
+  {
+   "id": "GE",
+   "iso": "GE",
+   "self": "criminal_prohibited",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "УК ст. 158; ст. 28, 30, 32",
+   "note_ru": "Ч. 1 — запись, ч. 2 — использование и распространение. Исключение — необходимая оборона"
+  },
+  {
+   "id": "DK",
+   "iso": "DK",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "Straffeloven §263",
+   "note_ru": ""
+  },
+  {
+   "id": "IE",
+   "iso": "IE",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "Postal and Telecommunications Services Act 1983, s.98",
+   "note_ru": ""
+  },
+  {
+   "id": "IS",
+   "iso": "IS",
+   "self": "notice_required",
+   "threat": "unknown",
+   "share_penalized": null,
+   "law": "Закон об электронных коммуникациях",
+   "note_ru": "Собеседника нужно уведомить в начале звонка. Проверка 08.11: закон 81/2003, похоже, заменён законом 70/2022. Номер статьи о записи нужно уточнить"
+  },
+  {
+   "id": "ES",
+   "iso": "ES",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "STC 114/1984; STC 56/2003; STS 753/2024",
+   "note_ru": "Исключение — интимное ядро частной жизни"
+  },
+  {
+   "id": "IT",
+   "iso": "IT",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "Cass. SU 36747/2003 (Torcasio); Cass. 18908/2011",
+   "note_ru": "Распространение вне целей защиты права нарушает приватность"
+  },
+  {
+   "id": "KZ",
+   "iso": "KZ",
+   "self": "allowed_court_limited",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "Конституция ст. 18; УК ст. 147, 148; ГК ст. 144; ГПК ст. 99",
+   "note_ru": "Google исправил Fable. В гражданском суде скрытую запись обычно отклоняют, в уголовном её принимают при угрозах. Ссылку Google на «Закон от 11.06.2026 № 307-VIII» проверить не удалось"
+  },
+  {
+   "id": "CY",
+   "iso": "CY",
+   "self": "absolute",
+   "threat": "no",
+   "share_penalized": true,
+   "law": "Закон 92(I)/1996 ст. 3 (до 10 лет и/или €100 000); Police v. Georghiades (1983); Апелляционный суд 31.10.2025",
+   "note_ru": "Единственное исключение — анонимные непристойные, назойливые или угрожающие звонки. Угрожает знакомый — записывать нельзя"
+  },
+  {
+   "id": "CY-N",
+   "iso": "CY",
+   "self": "unknown",
+   "threat": "yes",
+   "share_penalized": null,
+   "law": "Конституция ТРСК ст. 21; Fasıl 154; закон 89/2007",
+   "note_ru": "Явного запрета не найдено, запись угроз, вероятно, допустима (английское доказательственное право). Номера ТРСК имеют код +90, поэтому приложение определит их как Турцию, то есть по более строгим правилам",
+   "region_ru": "Северный Кипр (ТРСК)",
+   "region_en": "Northern Cyprus (TRNC)"
+  },
+  {
+   "id": "XK",
+   "iso": "XK",
+   "self": "unknown",
+   "threat": "unknown",
+   "share_penalized": null,
+   "law": "УК 06/L-074 (не подтверждено)",
+   "note_ru": "Проверка 08.11: текст найти не удалось"
+  },
+  {
+   "id": "LV",
+   "iso": "LV",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "УК ст. 144",
+   "note_ru": ""
+  },
+  {
+   "id": "LT",
+   "iso": "LT",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "УК ст. 166, 167; ГК ст. 2.22–2.23",
+   "note_ru": "Fable: «с оговорками». Проверка 08.11: уголовный запрет касается только неучастников, гражданская ответственность возникает при публикации сведений о частной жизни"
+  },
+  {
+   "id": "LU",
+   "iso": "LU",
+   "self": "criminal_prohibited",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "Закон от 11.08.1982 о частной жизни",
+   "note_ru": "Французская модель: запрет касается записи частных слов, посягающей на частную жизнь"
+  },
+  {
+   "id": "MT",
+   "iso": "MT",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "Специального запрета нет",
+   "note_ru": ""
+  },
+  {
+   "id": "MD",
+   "iso": "MD",
+   "self": "allowed_court_limited",
+   "threat": "limited",
+   "share_penalized": false,
+   "law": "УК ст. 177, 178",
+   "note_ru": "«Скорее можно»: явного запрета нет. Решений высшей инстанции не найдено"
+  },
+  {
+   "id": "MC",
+   "iso": "MC",
+   "self": "criminal_prohibited",
+   "threat": "yes",
+   "share_penalized": true,
+   "law": "Code pénal ст. 308-2, 308-3",
+   "note_ru": "Google исправил Fable: наказуемы запись и хранение. Апелляционный суд 07.03.2017 признал законной запись телефонных угроз без провокации"
+  },
+  {
+   "id": "NL",
+   "iso": "NL",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "Sr ст. 139a, 139c",
+   "note_ru": ""
+  },
+  {
+   "id": "NO",
+   "iso": "NO",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "Straffeloven §205",
+   "note_ru": ""
+  },
+  {
+   "id": "PL",
+   "iso": "PL",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "УК ст. 267; УПК ст. 168a; SN I CSK 2855/24",
+   "note_ru": "Публикация нарушает личные блага (ГК ст. 23, 24)"
+  },
+  {
+   "id": "PT",
+   "iso": "PT",
+   "self": "criminal_prohibited",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "УК ст. 199 (до 1 года)",
+   "note_ru": "Наказуема запись даже обращённых к вам слов (mesmo que lhe sejam dirigidas). Допустимо только при фиксации преступления против вас"
+  },
+  {
+   "id": "RU",
+   "iso": "RU",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "Конституция ст. 23; УК ст. 137, 138; ВС РФ 35-КГ16-18",
+   "note_ru": "Нельзя распространять сведения о частной жизни (ст. 137)"
+  },
+  {
+   "id": "RO",
+   "iso": "RO",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "УК ст. 226(4)(a); УПК ст. 139(3); ÎCCJ 39/2024",
+   "note_ru": ""
+  },
+  {
+   "id": "SM",
+   "iso": "SM",
+   "self": "unknown",
+   "threat": "unknown",
+   "share_penalized": null,
+   "law": "—",
+   "note_ru": "Данных нет"
+  },
+  {
+   "id": "MK",
+   "iso": "MK",
+   "self": "unknown",
+   "threat": "limited",
+   "share_penalized": null,
+   "law": "УК ст. 151",
+   "note_ru": "Google: преступление. Fable: серая зона. Проверка 08.11: первичный текст найти не удалось. Соседние кодексы той же югославской основы (Словения, Черногория, Сербия) не наказывают запись своего разговора без умысла злоупотребить, но для Македонии это не подтверждено. Преследование по частной жалобе"
+  },
+  {
+   "id": "RS",
+   "iso": "RS",
+   "self": "allowed_court_limited",
+   "threat": "limited",
+   "share_penalized": false,
+   "law": "УК ст. 143(1)",
+   "note_ru": "Google исправил Fable: наказуема запись только того, что «не предназначено» записывающему. Есть законопроект о расширении статьи"
+  },
+  {
+   "id": "SK",
+   "iso": "SK",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "ГК §12",
+   "note_ru": ""
+  },
+  {
+   "id": "SI",
+   "iso": "SI",
+   "self": "intent_misuse",
+   "threat": "yes",
+   "share_penalized": true,
+   "law": "KZ-1 ст. 137",
+   "note_ru": "Проверено 08.11, Google ошибся: ч. 1 касается только разговоров, «не предназначенных» записывающему. Ч. 2 наказывает запись адресованного вам конфиденциального заявления, только если она сделана с намерением злоупотребить, а также передачу третьим лицам. Частное обвинение"
+  },
+  {
+   "id": "TR",
+   "iso": "TR",
+   "self": "criminal_prohibited",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "TCK 133/2 (6 мес. – 2 года), 133/3 (разглашение — 2–5 лет)",
+   "note_ru": "Исключение Yargıtay: внезапная угроза, нет иной возможности сохранить доказательство. Спланированная запись незаконна (YCGK 2018/39 E.; AYM Alper Erarslan 2022)"
+  },
+  {
+   "id": "UA",
+   "iso": "UA",
+   "self": "allowed_court_limited",
+   "threat": "limited",
+   "share_penalized": false,
+   "law": "Конституция ст. 31, 32; УК ст. 163, 182; ВС 450/1952/18",
+   "note_ru": "В уголовном процессе целенаправленную запись могут отклонить (305/2022/14-к), а автоматическую запись всех звонков ВС признал допустимой. Поэтому режим «автозапись всех звонков» здесь полезен"
+  },
+  {
+   "id": "FI",
+   "iso": "FI",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "УК гл. 24 §5",
+   "note_ru": ""
+  },
+  {
+   "id": "FR",
+   "iso": "FR",
+   "self": "criminal_prohibited",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "Code pénal ст. 226-1, 226-2 (до 1 года и €45 000)",
+   "note_ru": "Запрет — для частной и интимной сферы, деловые разговоры не криминализованы (Cass. crim. 12.04.2023). Наказуемо даже хранение такой записи (226-2). В уголовном суде запись принимают (ст. 427 УПК), в гражданском — только если она незаменима"
+  },
+  {
+   "id": "HR",
+   "iso": "HR",
+   "self": "criminal_prohibited",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "KZ ст. 143",
+   "note_ru": "Ч. 4: нет преступления при преобладающем общественном или ином интересе, например защите от угроз"
+  },
+  {
+   "id": "ME",
+   "iso": "ME",
+   "self": "allowed_court_limited",
+   "threat": "limited",
+   "share_penalized": false,
+   "law": "KZ ст. 173",
+   "note_ru": "Проверено 08.11, Google ошибся: ч. 1 наказывает запись только того, что записывающему «nijesu namijenjeni». Текст проверен по редакции на 31.03.2021, позднее его могли изменить"
+  },
+  {
+   "id": "CZ",
+   "iso": "CZ",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "ГК §86, §88",
+   "note_ru": ""
+  },
+  {
+   "id": "CH",
+   "iso": "CH",
+   "self": "criminal_prohibited",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "StGB ст. 179ter (до 1 года, по жалобе); УПК ст. 141(2)",
+   "note_ru": "Запись допустима после взвешивания интересов при тяжком преступлении, например вымогательстве"
+  },
+  {
+   "id": "SE",
+   "iso": "SE",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "BrB 4:9a",
+   "note_ru": ""
+  },
+  {
+   "id": "EE",
+   "iso": "EE",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": false,
+   "law": "Karistusseadustik §137 (только незаконная слежка)",
+   "note_ru": ""
+  },
+  {
+   "id": "AU-VIC",
+   "iso": "AU",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": true,
+   "law": "SDA 1999 (Vic) s.6; IPA 1971 (Qld); SDA 2007 (NT)",
+   "note_ru": "",
+   "region_ru": "Виктория",
+   "region_en": "Victoria"
+  },
+  {
+   "id": "AU-QLD",
+   "iso": "AU",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": true,
+   "law": "SDA 1999 (Vic) s.6; IPA 1971 (Qld); SDA 2007 (NT)",
+   "note_ru": "",
+   "region_ru": "Квинсленд",
+   "region_en": "Queensland"
+  },
+  {
+   "id": "AU-NT",
+   "iso": "AU",
+   "self": "allowed",
+   "threat": "yes",
+   "share_penalized": true,
+   "law": "SDA 1999 (Vic) s.6; IPA 1971 (Qld); SDA 2007 (NT)",
+   "note_ru": "",
+   "region_ru": "Северная территория",
+   "region_en": "Northern Territory"
+  },
+  {
+   "id": "AU-NSW",
+   "iso": "AU",
+   "self": "criminal_prohibited",
+   "threat": "yes",
+   "share_penalized": true,
+   "law": "Исключение «для защиты законных интересов». NSW — до 5 лет",
+   "note_ru": "",
+   "region_ru": "Новый Южный Уэльс",
+   "region_en": "New South Wales"
+  },
+  {
+   "id": "AU-SA",
+   "iso": "AU",
+   "self": "criminal_prohibited",
+   "threat": "yes",
+   "share_penalized": true,
+   "law": "Исключение «для защиты законных интересов». NSW — до 5 лет",
+   "note_ru": "",
+   "region_ru": "Южная Австралия",
+   "region_en": "South Australia"
+  },
+  {
+   "id": "AU-TAS",
+   "iso": "AU",
+   "self": "criminal_prohibited",
+   "threat": "yes",
+   "share_penalized": true,
+   "law": "Исключение «для защиты законных интересов». NSW — до 5 лет",
+   "note_ru": "",
+   "region_ru": "Тасмания",
+   "region_en": "Tasmania"
+  },
+  {
+   "id": "AU-ACT",
+   "iso": "AU",
+   "self": "criminal_prohibited",
+   "threat": "yes",
+   "share_penalized": true,
+   "law": "Исключение «для защиты законных интересов». NSW — до 5 лет",
+   "note_ru": "",
+   "region_ru": "Австралийская столичная территория",
+   "region_en": "Australian Capital Territory"
+  },
+  {
+   "id": "AU-WA",
+   "iso": "AU",
+   "self": "absolute",
+   "threat": "limited",
+   "share_penalized": true,
+   "law": "SDA 1998 (WA): до 12 мес. и/или 5000 AUD",
+   "note_ru": "",
+   "region_ru": "Западная Австралия",
+   "region_en": "Western Australia"
+  },
+  {
+   "id": "AE",
+   "iso": "AE",
+   "self": "absolute",
+   "threat": "no",
+   "share_penalized": true,
+   "law": "Декрет-закон 34/2021 ст. 44",
+   "note_ru": ""
+  }
+ ]
+}
