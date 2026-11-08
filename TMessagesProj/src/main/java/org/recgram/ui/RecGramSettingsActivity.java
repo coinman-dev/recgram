@@ -68,17 +68,19 @@ public class RecGramSettingsActivity extends UniversalFragment {
 
         boolean custom = ApiKeys.isCustom();
         items.add(UItem.asHeader(s("Защищённый контент", "Protected content")));
-        items.add(UItem.asCheck(ID_SCREENSHOTS, s("Разрешить скриншоты и запись экрана", "Allow screenshots and screen recording")).setChecked(RecGramConfig.isAllowScreenshots()));
-        items.add(UItem.asCheck(ID_SECRET_NOTIFY, s("Уведомлять о скриншоте в секретных чатах", "Notify about screenshots in secret chats")).setChecked(RecGramConfig.isSecretScreenshotNotify()));
-        items.add(UItem.asCheck(ID_COPY, s("Копировать текст из защищённых чатов", "Copy text from protected chats")).setChecked(RecGramConfig.isAllowCopyProtected()));
-        items.add(UItem.asCheck(ID_SAVE, s("Сохранять медиа из защищённых чатов", "Save media from protected chats")).setChecked(RecGramConfig.isAllowSaveProtected()));
-        items.add(UItem.asCheck(ID_RESEND, s("Переотправлять сообщения из защищённых чатов", "Resend messages from protected chats")).setChecked(RecGramConfig.isAllowResendProtected()));
+        items.add(UItem.asCheck(ID_SCREENSHOTS, s("Разрешить скриншоты", "Allow screenshots")).setChecked(RecGramConfig.isAllowScreenshots()));
+        items.add(UItem.asCheck(ID_SECRET_NOTIFY, s("Сообщать о скриншоте", "Report screenshots")).setChecked(RecGramConfig.isSecretScreenshotNotify()));
+        items.add(UItem.asCheck(ID_COPY, s("Копировать текст", "Copy text")).setChecked(RecGramConfig.isAllowCopyProtected()));
+        items.add(UItem.asCheck(ID_SAVE, s("Сохранять медиа", "Save media")).setChecked(RecGramConfig.isAllowSaveProtected()));
+        items.add(UItem.asCheck(ID_RESEND, s("Переотправлять", "Resend")).setChecked(RecGramConfig.isAllowResendProtected()));
         items.add(UItem.asCheck(ID_STORIES, s("Скачивать истории", "Download stories")).setChecked(RecGramConfig.isAllowStoriesDownload()));
-        items.add(UItem.asCheck(ID_SELF_DESTRUCT, s("Сохранять исчезающие медиа", "Save self-destructing media")).setChecked(RecGramConfig.isAllowSelfDestructSave()).setEnabled(custom));
+        items.add(UItem.asCheck(ID_SELF_DESTRUCT, s("Сохранять исчезающие медиа", "Save disappearing media")).setChecked(RecGramConfig.isAllowSelfDestructSave()).setEnabled(custom));
         items.add(UItem.asShadow(s(
-                "Всё выключено по умолчанию. За использование чужого и платного контента отвечаете вы."
+                "Действует в каналах и чатах с запретом копирования и в секретных чатах. Скриншоты включают и запись экрана. «Сообщать о скриншоте» — собеседник в секретном чате узнает, что вы сделали скриншот. «Переотправлять» — сообщение уходит как новое, без пометки «Переслано».\n"
+                        + "Всё выключено по умолчанию. За использование чужого и платного контента отвечаете вы."
                         + (custom ? "" : "\nИсчезающие медиа доступны только со своим API-ключом."),
-                "Everything is off by default. You are responsible for how you use other people's and paid content."
+                "Applies to channels and chats that forbid copying and to secret chats. Screenshots include screen recording. \"Report screenshots\" lets the other party in a secret chat know you took a screenshot. \"Resend\" sends the message as a new one, without the \"Forwarded\" label.\n"
+                        + "Everything is off by default. You are responsible for how you use other people's and paid content."
                         + (custom ? "" : "\nSelf-destructing media is available only with your own API key."))));
 
         items.add(UItem.asHeader("API"));

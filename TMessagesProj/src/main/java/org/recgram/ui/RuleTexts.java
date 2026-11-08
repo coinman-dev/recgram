@@ -17,9 +17,20 @@ final class RuleTexts {
     }
 
     static CharSequence dotted(RecordingRules.Country c) {
+        return dotted(c.color(), c.displayName());
+    }
+
+    static CharSequence dotted(RecordingRules.Color color, CharSequence name) {
         SpannableStringBuilder sb = new SpannableStringBuilder("●  ");
-        sb.setSpan(new ForegroundColorSpan(RecordingRules.colorValue(c.color())), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        sb.append(c.displayName());
+        sb.setSpan(new ForegroundColorSpan(RecordingRules.colorValue(color)), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        sb.append(name);
+        return sb;
+    }
+
+    /** Слово статуса в цвете страны: «можно», «риск», «нельзя». */
+    static CharSequence coloredStatus(RecordingRules.Color color) {
+        SpannableStringBuilder sb = new SpannableStringBuilder(status(color));
+        sb.setSpan(new ForegroundColorSpan(RecordingRules.colorValue(color)), 0, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         return sb;
     }
 
