@@ -147,6 +147,10 @@ android {
 
         multiDexEnabled true
 
+        // RecGram: встроенный API-ключ берётся из local.properties или переменных окружения
+        buildConfigField "int", "RECGRAM_API_ID", (getProps("RECGRAM_API_ID") ?: System.getenv("RECGRAM_API_ID") ?: "0")
+        buildConfigField "String", "RECGRAM_API_HASH", "\"" + (getProps("RECGRAM_API_HASH") ?: System.getenv("RECGRAM_API_HASH") ?: "") + "\""
+
         externalNativeBuild {
             cmake {
                 version '3.22.1'
