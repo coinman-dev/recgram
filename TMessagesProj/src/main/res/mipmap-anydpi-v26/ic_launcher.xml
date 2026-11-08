@@ -3,5 +3,5 @@
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/icon_background" />
     <foreground android:drawable="@drawable/recgram_icon_foreground" />
-    <monochrome android:drawable="@drawable/recgram_icon_monochrome" />
+    <monochrome android:drawable="@drawable/icon_plane" />
 </adaptive-icon>
