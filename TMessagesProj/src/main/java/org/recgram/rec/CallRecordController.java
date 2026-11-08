@@ -176,6 +176,7 @@ public final class CallRecordController {
         t.put("RECGRAM_COUNTRY", c != null ? c.id : "");
         t.put("RECGRAM_COUNTRY_RULE", c != null ? c.self : "");
         t.put("RECGRAM_PEER_NOTIFIED", String.valueOf(notified));
+        t.put("RECGRAM_AUTO_LEVEL", String.valueOf(RecGramConfig.isAutoLevel()));
         return t;
     }
 
@@ -212,6 +213,7 @@ public final class CallRecordController {
             o.put("country", c != null ? c.id : "");
             o.put("country_rule", c != null ? c.self : "");
             o.put("peer_notified", notified);
+            o.put("auto_level", RecGramConfig.isAutoLevel());
             o.put("channels", "mono: me + peer");
             o.put("codec", CallRecorder.useOpus() ? "opus/ogg mono 64k" : "aac/mp4 mono 64k");
             o.put("failed", r.isFailed());

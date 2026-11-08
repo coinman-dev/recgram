@@ -36,6 +36,9 @@ public final class RecGramConfig {
     public static void setRecordVideo(boolean v) { put("record_video", v); }
     public static boolean isNotifyPeer() { return b("notify_peer", true); }
     public static void setNotifyPeer(boolean v) { put("notify_peer", v); }
+    /** Выравнивать громкость голосов при записи. */
+    public static boolean isAutoLevel() { return b("auto_level", true); }
+    public static void setAutoLevel(boolean v) { put("auto_level", v); }
 
     /** id из recording_rules.json, пустая строка — страна не выбрана. */
     public static String getCountryId() { return prefs().getString("country_id", ""); }

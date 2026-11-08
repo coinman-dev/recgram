@@ -52,6 +52,9 @@ public final class CallRecorder {
 
     private final File file;
     private final ShortFifo micFifo = new ShortFifo(RATE * 2);
+    private final boolean autoLevel = org.recgram.RecGramConfig.isAutoLevel();
+    private final AutoLevel micLevel = new AutoLevel();
+    private final AutoLevel peerLevel = new AutoLevel();
     private final LinkedBlockingQueue<short[]> stereo = new LinkedBlockingQueue<>();
     private final Thread thread;
     private volatile boolean stopping;
@@ -120,6 +123,7 @@ public final class CallRecorder {
     private void mic(short[] m) {
         short[] flush = null;
         synchronized (micFifo) {
+            if (autoLevel) micLevel.process(m);
             micFifo.write(m);
             if (micFifo.size() > MIC_BACKLOG) {
                 flush = new short[micFifo.size() / 2];
@@ -136,6 +140,7 @@ public final class CallRecorder {
         synchronized (micFifo) {
             micFifo.read(m, p.length);
         }
+        if (autoLevel) peerLevel.process(p);
         emit(m, p, p.length);
     }
 
@@ -155,7 +160,7 @@ public final class CallRecorder {
         short[] out = new short[n];
         for (int i = 0; i < n; i++) {
             int v = mine[i] + (peer != null ? peer[i] : 0);
-            out[i] = (short) Math.max(-32768, Math.min(32767, v));
+            out[i] = autoLevel ? AutoLevel.softLimit(v) : (short) Math.max(-32768, Math.min(32767, v));
         }
         stereo.offer(out);
     }
@@ -293,6 +298,51 @@ public final class CallRecorder {
                     active = null;
                 }
             }
+        }
+    }
+
+    /**
+     * Выравнивание громкости одного голоса: тихое плавно усиливается (до +18 дБ), громкое быстро
+     * приглушается. Шум тише −50 дБ не усиливается.
+     */
+    static final class AutoLevel {
+        private static final double TARGET = 0.1;     // ≈ −20 дБ от полной шкалы, среднее значение
+        private static final double GATE = 0.00316;   // ≈ −50 дБ
+        private static final double MAX_GAIN = 8.0;   // +18 дБ
+        private static final double MIN_GAIN = 0.5;   // −6 дБ
+        private double gain = 1.0;
+
+        void process(short[] x) {
+            if (x.length == 0) return;
+            double sum = 0;
+            for (short v : x) {
+                double f = v / 32768.0;
+                sum += f * f;
+            }
+            double rms = Math.sqrt(sum / x.length);
+            double target = gain;
+            if (rms > GATE) {
+                target = Math.max(MIN_GAIN, Math.min(MAX_GAIN, TARGET / rms));
+            }
+            // быстро вниз (≈30 мс), медленно вверх (≈0,5 с) при блоках по 10 мс
+            double k = target < gain ? 0.3 : 0.02;
+            double next = gain + (target - gain) * k;
+            for (int i = 0; i < x.length; i++) {
+                double g = gain + (next - gain) * i / x.length;
+                double v = x[i] * g;
+                x[i] = (short) Math.max(-32768, Math.min(32767, Math.round(v)));
+            }
+            gain = next;
+        }
+
+        /** Мягкое ограничение суммы двух голосов: до ~90% шкалы без изменений, выше — плавно. */
+        static short softLimit(int v) {
+            final double knee = 29491; // 90%
+            double a = Math.abs(v);
+            if (a <= knee) return (short) v;
+            double over = (a - knee) / (32767 - knee);
+            double out = knee + (32767 - knee) * Math.tanh(over);
+            return (short) (v < 0 ? -Math.round(out) : Math.round(out));
         }
     }
 
