@@ -126,23 +126,26 @@ public final class CallRecordController {
         final boolean out = outgoing, notified = peerNotified;
         Utilities.globalQueue.postRunnable(() -> {
             r.stop();
-            writeMetadata(r, started, id, name, phone, out, notified);
+            String title = (out ? s("Звонок: ", "Call to ") : s("Звонок от ", "Call from ")) + name;
+            String published = r.isFailed() ? null : RecordingStore.publish(r.getFile(), title);
+            writeMetadata(r, started, id, name, phone, out, notified, published);
+            if (published != null) {
+                r.getFile().delete();
+            }
+            showSaved(published);
         });
     }
 
     public static File recordingsDir() {
         Context ctx = ApplicationLoader.applicationContext;
-        File dir = ctx.getExternalFilesDir("recordings");
-        if (dir == null) {
-            dir = new File(ctx.getFilesDir(), "recordings");
-        }
+        File dir = new File(ctx.getFilesDir(), "recordings");
         if (!dir.exists()) {
             dir.mkdirs();
         }
         return dir;
     }
 
-    private static void writeMetadata(CallRecorder r, long started, long id, String name, String phone, boolean out, boolean notified) {
+    private static void writeMetadata(CallRecorder r, long started, long id, String name, String phone, boolean out, boolean notified, String published) {
         try {
             File f = r.getFile();
             JSONObject o = new JSONObject();
@@ -160,6 +163,7 @@ public final class CallRecordController {
             o.put("channels", "left=me,right=peer");
             o.put("failed", r.isFailed());
             o.put("sha256", f.exists() ? sha256(f) : "");
+            o.put("saved_to", published != null ? published : f.getAbsolutePath());
             o.put("app", "RecGram " + BuildVars.BUILD_VERSION_STRING);
             File meta = new File(f.getParentFile(), f.getName().replace(".m4a", ".json"));
             try (FileOutputStream os = new FileOutputStream(meta)) {
@@ -203,6 +207,22 @@ public final class CallRecordController {
                     .setWhen(startedAt)
                     .setPriority(NotificationCompat.PRIORITY_LOW);
             nm.notify(NOTIFICATION_ID, b.build());
+        } catch (Throwable e) {
+            FileLog.e(e);
+        }
+    }
+
+    private static void showSaved(String path) {
+        try {
+            Context ctx = ApplicationLoader.applicationContext;
+            NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+            NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, CHANNEL)
+                    .setSmallIcon(R.drawable.notification)
+                    .setContentTitle(path != null ? s("Запись звонка сохранена", "Call recording saved") : s("Не удалось сохранить запись", "Could not save the recording"))
+                    .setContentText(path != null ? path : "")
+                    .setAutoCancel(true)
+                    .setPriority(NotificationCompat.PRIORITY_LOW);
+            nm.notify(NOTIFICATION_ID + 1, b.build());
         } catch (Throwable e) {
             FileLog.e(e);
         }
