@@ -60,17 +60,41 @@ public final class CallRecordController {
         if (service == null || service.groupCall != null) {
             return; // пока только личные звонки
         }
-        if (state == VoIPService.STATE_ESTABLISHED && !established) {
+        if (state == VoIPService.STATE_WAITING || state == VoIPService.STATE_RINGING
+                || state == VoIPService.STATE_WAITING_INCOMING) {
+            notifyBeforeAnswer(service, state == VoIPService.STATE_WAITING_INCOMING);
+        } else if (state == VoIPService.STATE_ESTABLISHED && !established) {
             established = true;
-            notifiedThisCall = false;
             if (RecGramConfig.getRecordingMode() == RecGramConfig.RECORD_AUTO && canStart()) {
                 start(service);
             }
         } else if (state == VoIPService.STATE_ENDED || state == VoIPService.STATE_FAILED
                 || state == VoIPService.STATE_HANGING_UP || state == VoIPService.STATE_BUSY) {
             established = false;
+            notifiedThisCall = false;
             stop();
         }
+    }
+
+    /**
+     * Предупреждение до соединения: исходящий — вместе с вызовом, входящий — пока звонит.
+     * Только для режима «все звонки»: в ручном режиме неизвестно, будет ли запись.
+     */
+    private static void notifyBeforeAnswer(VoIPService service, boolean incoming) {
+        if (notifiedThisCall || !RecGramConfig.isNotifyPeer()
+                || RecGramConfig.getRecordingMode() != RecGramConfig.RECORD_AUTO
+                || !RecordingRules.isRecordingAllowed() || !RecGramConfig.isRecordAudio()) {
+            return;
+        }
+        TLRPC.User user = service.getUser();
+        if (user == null || user.id == 0) {
+            return;
+        }
+        notifiedThisCall = true;
+        String text = incoming
+                ? "🔴 Если ответить, этот звонок будет записан · If answered, this call will be recorded (RecGram)"
+                : "🔴 Этот звонок будет записан · This call will be recorded (RecGram)";
+        SendMessagesHelper.getInstance(service.getAccount()).sendMessage(SendMessagesHelper.SendMessageParams.of(text, user.id));
     }
 
     /** Можно ли начать запись прямо сейчас (страна, настройки, идёт личный звонок). */
@@ -113,7 +137,7 @@ public final class CallRecordController {
             return;
         }
         startedAt = System.currentTimeMillis();
-        peerNotified = false;
+        peerNotified = notifiedThisCall; // предупреждение могло уйти ещё до ответа
         showNotification();
         if (RecGramConfig.isNotifyPeer() && peerId != 0 && !notifiedThisCall) {
             notifiedThisCall = true;
