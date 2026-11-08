@@ -41,9 +41,10 @@ public class RecordingSettingsActivity extends UniversalFragment {
         RecordingRules.Country c = RecordingRules.selected();
         boolean allowed = RecordingRules.isRecordingAllowed();
 
-        items.add(UItem.asHeader(s("Страна", "Country")));
-        items.add(UItem.asButton(ID_COUNTRY, s("В какой стране вы находитесь?", "Which country are you in?"),
-                c == null ? s("Не выбрана", "Not set") : RuleTexts.dotted(c)));
+        items.add(UItem.asHeader(s("В какой стране вы находитесь?", "Which country are you in?")));
+        items.add(UItem.asButton(ID_COUNTRY,
+                c == null ? s("Выбрать страну", "Choose country") : RuleTexts.dotted(c),
+                c == null ? "" : s("изменить", "change")));
         String info;
         if (c == null) {
             info = s("Выберите страну, иначе запись не включится.", "Choose your country, otherwise recording stays off.");
