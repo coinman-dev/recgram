@@ -17459,7 +17459,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 (messageObject.messageOwner != null && messageObject.messageOwner.noforwards)) || messageObject != null && messageObject.hasRevealedExtendedMedia() ||
                 isPageBlocksNoForwards(pageBlocksAdapter)
             ) {
-                windowLayoutParams.flags |= WindowManager.LayoutParams.FLAG_SECURE;
+                if (!org.recgram.Protect.screenshots()) windowLayoutParams.flags |= WindowManager.LayoutParams.FLAG_SECURE; // RecGram
                 AndroidUtilities.logFlagSecure();
             } else {
                 windowLayoutParams.flags &=~ WindowManager.LayoutParams.FLAG_SECURE;

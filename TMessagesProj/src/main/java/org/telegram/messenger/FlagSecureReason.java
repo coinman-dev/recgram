@@ -64,7 +64,7 @@ public class FlagSecureReason {
             return;
         }
 
-        if (isSecuredNow(window)) {
+        if (isSecuredNow(window) && !org.recgram.Protect.screenshots()) { // RecGram
             window.addFlags(WindowManager.LayoutParams.FLAG_SECURE);
             AndroidUtilities.logFlagSecure();
         } else {
