@@ -49,6 +49,8 @@ public final class CallRecordController {
     private static String peerPhone;
     private static boolean outgoing;
     private static boolean peerNotified;
+    private static String fromName;
+    private static String toName;
 
     private CallRecordController() {
     }
@@ -101,6 +103,8 @@ public final class CallRecordController {
         String myName = me != null ? UserObject.getUserName(me) : s("Я", "Me");
         String from = outgoing ? myName : peerName;
         String to = outgoing ? peerName : myName;
+        fromName = from;
+        toName = to;
         String stamp = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(new Date());
         String base = safe(from) + "→" + safe(to) + "_" + stamp;
         File file = new File(recordingsDir(), base + CallRecorder.extension());
@@ -130,17 +134,49 @@ public final class CallRecordController {
         final long id = peerId;
         final String name = peerName, phone = peerPhone;
         final boolean out = outgoing, notified = peerNotified;
+        final String fromN = fromName, toN = toName;
         Utilities.globalQueue.postRunnable(() -> {
             r.stop();
             String title = (out ? s("Звонок: ", "Call to ") : s("Звонок от ", "Call from ")) + name;
+            boolean tagged = false;
+            if (!r.isFailed() && r.getFile().getName().endsWith(".opus")) {
+                tagged = OggOpusTags.write(r.getFile(), "RecGram " + BuildVars.BUILD_VERSION_STRING,
+                        buildTags(r, started, id, fromN, toN, phone, out, notified));
+            }
             String published = r.isFailed() ? null : RecordingStore.publish(r.getFile(), title);
             File meta = writeMetadata(r, started, id, name, phone, out, notified, published);
-            String metaPublished = meta != null ? RecordingStore.publishJson(meta) : null;
+            // Данные уже внутри .opus — отдельный JSON нужен только для .m4a
+            String metaPublished = !tagged && meta != null ? RecordingStore.publishJson(meta) : null;
             if (published != null) {
                 r.getFile().delete();
             }
             showSaved(published, metaPublished);
         });
+    }
+
+    /** Теги .opus с данными звонка (Vorbis comments). */
+    private static java.util.LinkedHashMap<String, String> buildTags(CallRecorder r, long started, long id, String from, String to,
+                                                                    String phone, boolean out, boolean notified) {
+        java.util.LinkedHashMap<String, String> t = new java.util.LinkedHashMap<>();
+        Date d = new Date(started);
+        String iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US).format(d);
+        t.put("TITLE", from + " → " + to + ", " + new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(d));
+        t.put("ARTIST", from);
+        t.put("ALBUM", s("Звонки RecGram", "RecGram calls"));
+        t.put("DATE", iso);
+        t.put("COMMENT", s("Запись звонка Telegram, сделанная RecGram", "Telegram call recorded with RecGram"));
+        t.put("RECGRAM_FROM", from);
+        t.put("RECGRAM_TO", to);
+        t.put("RECGRAM_DIRECTION", out ? "outgoing" : "incoming");
+        t.put("RECGRAM_PEER_ID", String.valueOf(id));
+        t.put("RECGRAM_PEER_PHONE", phone);
+        t.put("RECGRAM_STARTED", iso);
+        t.put("RECGRAM_DURATION_MS", String.valueOf(r.durationMs()));
+        RecordingRules.Country c = RecordingRules.selected();
+        t.put("RECGRAM_COUNTRY", c != null ? c.id : "");
+        t.put("RECGRAM_COUNTRY_RULE", c != null ? c.self : "");
+        t.put("RECGRAM_PEER_NOTIFIED", String.valueOf(notified));
+        return t;
     }
 
     /** Имя для файла: без символов, запрещённых в Android и Windows. */
