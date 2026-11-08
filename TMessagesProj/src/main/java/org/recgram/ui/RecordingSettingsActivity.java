@@ -68,8 +68,8 @@ public class RecordingSettingsActivity extends UniversalFragment {
         items.add(UItem.asCheck(ID_AUDIO, s("Звук", "Audio")).setChecked(RecGramConfig.isRecordAudio()).setEnabled(allowed));
         items.add(UItem.asCheck(ID_VIDEO, s("Видео (в разработке)", "Video (in development)")).setChecked(false).setEnabled(false));
         items.add(UItem.asCheck(ID_NOTIFY, s("Сообщать собеседнику о записи", "Tell the other party about recording")).setChecked(RecGramConfig.isNotifyPeer()).setEnabled(allowed));
-        items.add(UItem.asShadow(s("В начале записи собеседнику уйдёт сообщение «Этот звонок записывается». Пока записываются только личные звонки, звук в стерео: вы слева, собеседник справа.",
-                "When recording starts, the other party gets the message \"This call is being recorded\". For now only private calls are recorded, in stereo: you on the left, the other party on the right.")));
+        items.add(UItem.asShadow(s("В начале записи собеседнику уйдёт сообщение «Этот звонок записывается». Пока записываются только личные звонки. Запись: Opus, моно, 64 кбит/с, папка Recordings/RecGram, рядом файл .json с данными звонка.",
+                "When recording starts, the other party gets the message \"This call is being recorded\". For now only private calls are recorded. Format: Opus, mono, 64 kbps, folder Recordings/RecGram, with a .json file with call data next to it.")));
     }
 
     @Override

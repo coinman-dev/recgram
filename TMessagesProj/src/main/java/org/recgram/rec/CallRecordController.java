@@ -134,11 +134,12 @@ public final class CallRecordController {
             r.stop();
             String title = (out ? s("Звонок: ", "Call to ") : s("Звонок от ", "Call from ")) + name;
             String published = r.isFailed() ? null : RecordingStore.publish(r.getFile(), title);
-            writeMetadata(r, started, id, name, phone, out, notified, published);
+            File meta = writeMetadata(r, started, id, name, phone, out, notified, published);
+            String metaPublished = meta != null ? RecordingStore.publishJson(meta) : null;
             if (published != null) {
                 r.getFile().delete();
             }
-            showSaved(published);
+            showSaved(published, metaPublished);
         });
     }
 
@@ -160,7 +161,7 @@ public final class CallRecordController {
         return dir;
     }
 
-    private static void writeMetadata(CallRecorder r, long started, long id, String name, String phone, boolean out, boolean notified, String published) {
+    private static File writeMetadata(CallRecorder r, long started, long id, String name, String phone, boolean out, boolean notified, String published) {
         try {
             File f = r.getFile();
             JSONObject o = new JSONObject();
@@ -175,8 +176,8 @@ public final class CallRecordController {
             o.put("country", c != null ? c.id : "");
             o.put("country_rule", c != null ? c.self : "");
             o.put("peer_notified", notified);
-            o.put("channels", "left=me,right=peer");
-            o.put("codec", CallRecorder.useOpus() ? "opus/ogg 64k" : "aac/mp4 128k");
+            o.put("channels", "mono: me + peer");
+            o.put("codec", CallRecorder.useOpus() ? "opus/ogg mono 64k" : "aac/mp4 mono 64k");
             o.put("failed", r.isFailed());
             o.put("sha256", f.exists() ? sha256(f) : "");
             o.put("saved_to", published != null ? published : f.getAbsolutePath());
@@ -186,8 +187,10 @@ public final class CallRecordController {
             try (FileOutputStream os = new FileOutputStream(meta)) {
                 os.write(o.toString(1).getBytes(StandardCharsets.UTF_8));
             }
+            return meta;
         } catch (Throwable e) {
             FileLog.e(e);
+            return null;
         }
     }
 
@@ -229,7 +232,7 @@ public final class CallRecordController {
         }
     }
 
-    private static void showSaved(String path) {
+    private static void showSaved(String path, String metaPath) {
         try {
             Context ctx = ApplicationLoader.applicationContext;
             NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -237,6 +240,8 @@ public final class CallRecordController {
                     .setSmallIcon(R.drawable.notification)
                     .setContentTitle(path != null ? s("Запись звонка сохранена", "Call recording saved") : s("Не удалось сохранить запись", "Could not save the recording"))
                     .setContentText(path != null ? path : "")
+                    .setStyle(new NotificationCompat.BigTextStyle().bigText(path == null ? "" :
+                            path + (metaPath == null ? "" : metaPath.startsWith(RecordingStore.relativeDir()) ? "\n" + s("Данные звонка: рядом, файл .json", "Call data: next to it, .json file") : "\n" + s("Данные звонка: ", "Call data: ") + metaPath)))
                     .setAutoCancel(true)
                     .setPriority(NotificationCompat.PRIORITY_LOW);
             nm.notify(NOTIFICATION_ID + 1, b.build());

@@ -73,6 +73,47 @@ final class RecordingStore {
         }
     }
 
+    /**
+     * JSON с данными звонка рядом с записью. Android может не пустить не-аудиофайл в папку записей,
+     * тогда файл кладётся в Documents/RecGram. Возвращает путь или null.
+     */
+    static String publishJson(File src) {
+        String[] dirs = {relativeDir(), Environment.DIRECTORY_DOCUMENTS + "/" + SUBDIR};
+        if (Build.VERSION.SDK_INT < 29) {
+            try {
+                File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), SUBDIR);
+                File dst = new File(dir, src.getName());
+                try (InputStream in = new FileInputStream(src); OutputStream out = new FileOutputStream(dst)) {
+                    copy(in, out);
+                }
+                return Environment.DIRECTORY_MUSIC + "/" + SUBDIR + "/" + src.getName();
+            } catch (Throwable e) {
+                FileLog.e(e);
+                return null;
+            }
+        }
+        ContentResolver cr = ApplicationLoader.applicationContext.getContentResolver();
+        for (String dir : dirs) {
+            try {
+                ContentValues v = new ContentValues();
+                v.put(MediaStore.MediaColumns.DISPLAY_NAME, src.getName());
+                v.put(MediaStore.MediaColumns.MIME_TYPE, "application/json");
+                v.put(MediaStore.MediaColumns.RELATIVE_PATH, dir);
+                Uri uri = cr.insert(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), v);
+                if (uri == null) {
+                    continue;
+                }
+                try (InputStream in = new FileInputStream(src); OutputStream out = cr.openOutputStream(uri)) {
+                    copy(in, out);
+                }
+                return dir + "/" + src.getName();
+            } catch (Throwable e) {
+                FileLog.e(e);
+            }
+        }
+        return null;
+    }
+
     private static void copy(InputStream in, OutputStream out) throws java.io.IOException {
         byte[] buf = new byte[65536];
         int n;

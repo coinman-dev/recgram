@@ -13,7 +13,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Запись звонка: микрофон (левый канал) и собеседник (правый канал), AAC 48 кГц в .m4a.
+ * Запись звонка: микрофон и собеседник, сведённые в моно 48 кГц, 64 кбит/с (Opus в .opus или AAC в .m4a).
  * Данные приходят из потоков WebRTC: onMic — после чтения микрофона, onPlayout — перед воспроизведением.
  */
 public final class CallRecorder {
@@ -28,7 +28,7 @@ public final class CallRecorder {
             boolean ok = false;
             if (android.os.Build.VERSION.SDK_INT >= 29) {
                 try {
-                    MediaFormat f = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_OPUS, RATE, 2);
+                    MediaFormat f = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_OPUS, RATE, 1);
                     ok = new android.media.MediaCodecList(android.media.MediaCodecList.REGULAR_CODECS).findEncoderForFormat(f) != null;
                 } catch (Throwable ignore) {
                 }
@@ -150,11 +150,12 @@ public final class CallRecorder {
         }
     }
 
-    private void emit(short[] left, short[] right, int n) {
-        short[] out = new short[n * 2];
+    /** Сведение в моно: голос владельца + голос собеседника, с ограничением по краям. */
+    private void emit(short[] mine, short[] peer, int n) {
+        short[] out = new short[n];
         for (int i = 0; i < n; i++) {
-            out[i * 2] = left[i];
-            out[i * 2 + 1] = right != null ? right[i] : 0;
+            int v = mine[i] + (peer != null ? peer[i] : 0);
+            out[i] = (short) Math.max(-32768, Math.min(32767, v));
         }
         stereo.offer(out);
     }
@@ -197,11 +198,11 @@ public final class CallRecorder {
         try {
             final boolean opus = useOpus();
             final String mime = opus ? MediaFormat.MIMETYPE_AUDIO_OPUS : MediaFormat.MIMETYPE_AUDIO_AAC;
-            MediaFormat format = MediaFormat.createAudioFormat(mime, RATE, 2);
+            MediaFormat format = MediaFormat.createAudioFormat(mime, RATE, 1);
             if (!opus) {
                 format.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
             }
-            format.setInteger(MediaFormat.KEY_BIT_RATE, opus ? 64000 : 128000);
+            format.setInteger(MediaFormat.KEY_BIT_RATE, 64000);
             format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384);
             codec = MediaCodec.createEncoderByType(mime);
             codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
@@ -223,7 +224,6 @@ public final class CallRecorder {
                             ByteBuffer ib = codec.getInputBuffer(in);
                             ib.clear();
                             int maxShorts = Math.min(ib.remaining() / 2, pending.length - pendingOff);
-                            maxShorts -= maxShorts % 2;
                             for (int i = 0; i < maxShorts; i++) {
                                 short v = pending[pendingOff + i];
                                 ib.put((byte) (v & 0xff));
@@ -231,7 +231,7 @@ public final class CallRecorder {
                             }
                             long pts = frames * 1000000L / RATE;
                             codec.queueInputBuffer(in, 0, maxShorts * 2, pts, 0);
-                            frames += maxShorts / 2;
+                            frames += maxShorts;
                             pendingOff += maxShorts;
                             if (pendingOff >= pending.length) {
                                 pending = null;
