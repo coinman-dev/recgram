@@ -3691,7 +3691,7 @@ public class SharedMediaLayout extends FrameLayout implements Theme.Colorable, N
             for (Integer id1 : ids) {
                 if (id1 > 0) {
                     MessageObject msg = selectedFiles[a].get(id1);
-                    if (msg != null && msg.messageOwner != null && msg.messageOwner.noforwards) {
+                    if (msg != null && msg.messageOwner != null && org.recgram.Protect.nf(msg.messageOwner)) {
                         hasNoforwardsMessage = true;
                         break;
                     }

@@ -6672,6 +6672,7 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public boolean isChatNoForwards(TLRPC.Chat chat) {
+        if (org.recgram.Protect.copySave()) return false; // RecGram
         if (chat == null) {
             return false;
         }
@@ -6697,6 +6698,7 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public boolean isUserNoForwards(TLRPC.UserFull userFull) {
+        if (org.recgram.Protect.copySave()) return false; // RecGram
         if (userFull == null) {
             return false;
         }

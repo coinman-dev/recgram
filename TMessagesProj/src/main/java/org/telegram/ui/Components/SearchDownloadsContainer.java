@@ -145,7 +145,7 @@ public class SearchDownloadsContainer extends FrameLayout implements Notificatio
                     }
                     boolean openInPhotoViewer = message.canPreviewDocument();
                     if (!openInPhotoViewer) {
-                        boolean noforwards = message.messageOwner != null && message.messageOwner.noforwards;
+                        boolean noforwards = message.messageOwner != null && org.recgram.Protect.nf(message.messageOwner);
                         TLRPC.Chat chatTo = messageObject.messageOwner.peer_id.channel_id != 0 ? MessagesController.getInstance(UserConfig.selectedAccount).getChat(messageObject.messageOwner.peer_id.channel_id) : null;
                         if (chatTo == null) {
                             chatTo = messageObject.messageOwner.peer_id.chat_id != 0 ? MessagesController.getInstance(UserConfig.selectedAccount).getChat(messageObject.messageOwner.peer_id.chat_id) : null;
