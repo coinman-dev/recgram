@@ -49,10 +49,9 @@ public final class RecGramConfig {
     public static void setAllowScreenshots(boolean v) { put("allow_screenshots", v); }
     public static boolean isSecretScreenshotNotify() { return b("secret_screenshot_notify", true); }
     public static void setSecretScreenshotNotify(boolean v) { put("secret_screenshot_notify", v); }
-    public static boolean isAllowCopyProtected() { return b("allow_copy_protected", false); }
-    public static void setAllowCopyProtected(boolean v) { put("allow_copy_protected", v); }
-    public static boolean isAllowSaveProtected() { return b("allow_save_protected", false); }
-    public static void setAllowSaveProtected(boolean v) { put("allow_save_protected", v); }
+    /** Копирование текста и сохранение медиа из защищённых чатов. */
+    public static boolean isAllowCopySave() { return b("allow_copy_save", false); }
+    public static void setAllowCopySave(boolean v) { put("allow_copy_save", v); }
     public static boolean isAllowResendProtected() { return b("allow_resend_protected", false); }
     public static void setAllowResendProtected(boolean v) { put("allow_resend_protected", v); }
     public static boolean isAllowStoriesDownload() { return b("allow_stories_download", false); }

@@ -169,6 +169,7 @@ public class WebRtcAudioTrack {
           keepAlive = false;
           continue;
         }
+        org.recgram.rec.CallRecorder.onPlayout(byteBuffer, sizeInBytes, sampleRate, bytesPerFrame / 2); // RecGram
         // Write data until all data has been written to the audio sink.
         // Upon return, the buffer position will have been advanced to reflect
         // the amount of data that was successfully written to the AudioTrack.

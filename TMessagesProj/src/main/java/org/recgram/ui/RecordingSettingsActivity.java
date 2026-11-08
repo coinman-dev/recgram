@@ -58,17 +58,17 @@ public class RecordingSettingsActivity extends UniversalFragment {
         int mode = allowed ? RecGramConfig.getRecordingMode() : RecGramConfig.RECORD_OFF;
         items.add(UItem.asHeader(s("Когда записывать", "When to record")));
         items.add(UItem.asRadio(ID_MODE_OFF, s("Выключено", "Off")).setChecked(mode == RecGramConfig.RECORD_OFF));
-        items.add(UItem.asRadio(ID_MODE_ASK, s("Спрашивать перед звонком", "Ask before each call")).setChecked(mode == RecGramConfig.RECORD_ASK).setEnabled(allowed));
+        items.add(UItem.asRadio(ID_MODE_ASK, s("Вручную: кнопка в звонке", "Manually: button in call")).setChecked(mode == RecGramConfig.RECORD_ASK).setEnabled(allowed));
         items.add(UItem.asRadio(ID_MODE_AUTO, s("Записывать все звонки", "Record all calls")).setChecked(mode == RecGramConfig.RECORD_AUTO).setEnabled(allowed));
-        items.add(UItem.asShadow(s("Во время записи всегда виден значок записи. Скрытой записи в RecGram нет.",
-                "A recording indicator is always visible while recording. RecGram has no hidden recording.")));
+        items.add(UItem.asShadow(s("Во время записи на экране звонка видна отметка «REC» и висит уведомление. Нажатие на отметку останавливает запись. Скрытой записи в RecGram нет.",
+                "While recording, the call screen shows a \"REC\" mark and a notification is shown. Tap the mark to stop. RecGram has no hidden recording.")));
 
         items.add(UItem.asHeader(s("Что записывать", "What to record")));
         items.add(UItem.asCheck(ID_AUDIO, s("Звук", "Audio")).setChecked(RecGramConfig.isRecordAudio()).setEnabled(allowed));
         items.add(UItem.asCheck(ID_VIDEO, s("Видео (в разработке)", "Video (in development)")).setChecked(false).setEnabled(false));
         items.add(UItem.asCheck(ID_NOTIFY, s("Сообщать собеседнику о записи", "Tell the other party about recording")).setChecked(RecGramConfig.isNotifyPeer()).setEnabled(allowed));
-        items.add(UItem.asShadow(s("В начале записи собеседнику уйдёт сообщение «Этот звонок записывается». Сама запись звонков появится в следующих версиях.",
-                "When recording starts, the other party gets the message \"This call is being recorded\". Call recording itself arrives in upcoming versions.")));
+        items.add(UItem.asShadow(s("В начале записи собеседнику уйдёт сообщение «Этот звонок записывается». Пока записываются только личные звонки, звук в стерео: вы слева, собеседник справа.",
+                "When recording starts, the other party gets the message \"This call is being recorded\". For now only private calls are recorded, in stereo: you on the left, the other party on the right.")));
     }
 
     @Override

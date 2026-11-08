@@ -4903,6 +4903,7 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
 			FileLog.d("== Call " + getCallID() + " state changed to " + state + " ==");
 		}
 		currentState = state;
+		org.recgram.rec.CallRecordController.onCallState(this, state); // RecGram
 		if (currentState == STATE_ESTABLISHED) {
 			destroyConverting();
 		}

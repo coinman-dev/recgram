@@ -83,7 +83,11 @@ public class CountrySelectActivity extends UniversalFragment {
             }
         }
         CharSequence value = chosen != null ? RuleTexts.coloredStatus(chosen.color()) : s("регионы ›", "regions ›");
-        String name = chosen != null ? groupName(g) + ": " + regionName(chosen) : groupName(g);
+        String name = groupName(g);
+        if (chosen != null) {
+            String region = regionName(chosen);
+            name = region.contains(name) ? region : name + ": " + region;
+        }
         return UItem.asRadio(id, name, value).setChecked(chosen != null);
     }
 
@@ -91,8 +95,8 @@ public class CountrySelectActivity extends UniversalFragment {
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         String selected = RecGramConfig.getCountryId();
         items.add(UItem.asShadow(s(
-                "От страны зависит, можно ли записывать звонки.\n🟢 можно · 🟡 непонятно или есть риск, решаете вы · 🔴 нельзя, запись не работает",
-                "Your country decides whether calls can be recorded.\n🟢 allowed · 🟡 unclear or risky, you decide · 🔴 not allowed, recording is off")));
+                "От страны зависит, можно ли записывать звонки.\n\n🟢 Зелёный — можно\n🟡 Жёлтый — непонятно или есть риск, решаете вы\n🔴 Красный — нельзя, запись не работает",
+                "Your country decides whether calls can be recorded.\n\n🟢 Green — allowed\n🟡 Yellow — unclear or risky, you decide\n🔴 Red — not allowed, recording is off")));
         if (!detected.isEmpty()) {
             items.add(UItem.asHeader(s("Определено по сети", "Detected from network")));
             for (int i = 0; i < detected.size(); i++) {
