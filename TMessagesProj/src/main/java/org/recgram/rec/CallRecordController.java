@@ -18,6 +18,7 @@ import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SendMessagesHelper;
+import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.messenger.Utilities;
 import org.telegram.messenger.voip.VoIPService;
@@ -96,8 +97,13 @@ public final class CallRecordController {
         peerName = user != null ? UserObject.getUserName(user) : "";
         peerPhone = user != null && user.phone != null ? user.phone : "";
         outgoing = service.isOutgoing();
-        String stamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        File file = new File(recordingsDir(), "call_" + stamp + "_" + peerId + (outgoing ? "_out" : "_in") + ".m4a");
+        TLRPC.User me = UserConfig.getInstance(account).getCurrentUser();
+        String myName = me != null ? UserObject.getUserName(me) : s("Я", "Me");
+        String from = outgoing ? myName : peerName;
+        String to = outgoing ? peerName : myName;
+        String stamp = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(new Date());
+        String base = safe(from) + "→" + safe(to) + "_" + stamp;
+        File file = new File(recordingsDir(), base + CallRecorder.extension());
         recorder = CallRecorder.start(file);
         if (recorder == null) {
             return;
@@ -136,6 +142,15 @@ public final class CallRecordController {
         });
     }
 
+    /** Имя для файла: без символов, запрещённых в Android и Windows. */
+    private static String safe(String name) {
+        String s = name == null ? "" : name.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "").trim();
+        if (s.length() > 40) {
+            s = s.substring(0, 40).trim();
+        }
+        return s.isEmpty() ? "unknown" : s;
+    }
+
     public static File recordingsDir() {
         Context ctx = ApplicationLoader.applicationContext;
         File dir = new File(ctx.getFilesDir(), "recordings");
@@ -161,11 +176,13 @@ public final class CallRecordController {
             o.put("country_rule", c != null ? c.self : "");
             o.put("peer_notified", notified);
             o.put("channels", "left=me,right=peer");
+            o.put("codec", CallRecorder.useOpus() ? "opus/ogg 64k" : "aac/mp4 128k");
             o.put("failed", r.isFailed());
             o.put("sha256", f.exists() ? sha256(f) : "");
             o.put("saved_to", published != null ? published : f.getAbsolutePath());
             o.put("app", "RecGram " + BuildVars.BUILD_VERSION_STRING);
-            File meta = new File(f.getParentFile(), f.getName().replace(".m4a", ".json"));
+            String n = f.getName();
+            File meta = new File(f.getParentFile(), n.substring(0, n.lastIndexOf('.')) + ".json");
             try (FileOutputStream os = new FileOutputStream(meta)) {
                 os.write(o.toString(1).getBytes(StandardCharsets.UTF_8));
             }

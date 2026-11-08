@@ -19,7 +19,32 @@ import java.util.concurrent.TimeUnit;
 public final class CallRecorder {
 
     private static final int RATE = 48000;
-    private static final int BITRATE = 128000;
+
+    /** Opus в Ogg есть в Android 10+, на старых версиях — AAC в MP4. */
+    private static Boolean opusAvailable;
+
+    public static synchronized boolean useOpus() {
+        if (opusAvailable == null) {
+            boolean ok = false;
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                try {
+                    MediaFormat f = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_OPUS, RATE, 2);
+                    ok = new android.media.MediaCodecList(android.media.MediaCodecList.REGULAR_CODECS).findEncoderForFormat(f) != null;
+                } catch (Throwable ignore) {
+                }
+            }
+            opusAvailable = ok;
+        }
+        return opusAvailable;
+    }
+
+    public static String extension() {
+        return useOpus() ? ".opus" : ".m4a";
+    }
+
+    public static String mimeType() {
+        return useOpus() ? "audio/ogg" : "audio/mp4";
+    }
     /** Если звука собеседника нет дольше 200 мс, микрофон пишется с тишиной справа. */
     private static final int MIC_BACKLOG = RATE / 5;
 
@@ -170,14 +195,18 @@ public final class CallRecorder {
         int track = -1;
         boolean muxerStarted = false;
         try {
-            MediaFormat format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, RATE, 2);
-            format.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
-            format.setInteger(MediaFormat.KEY_BIT_RATE, BITRATE);
+            final boolean opus = useOpus();
+            final String mime = opus ? MediaFormat.MIMETYPE_AUDIO_OPUS : MediaFormat.MIMETYPE_AUDIO_AAC;
+            MediaFormat format = MediaFormat.createAudioFormat(mime, RATE, 2);
+            if (!opus) {
+                format.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
+            }
+            format.setInteger(MediaFormat.KEY_BIT_RATE, opus ? 64000 : 128000);
             format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384);
-            codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC);
+            codec = MediaCodec.createEncoderByType(mime);
             codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
             codec.start();
-            muxer = new MediaMuxer(file.getAbsolutePath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            muxer = new MediaMuxer(file.getAbsolutePath(), opus ? MediaMuxer.OutputFormat.MUXER_OUTPUT_OGG : MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
             MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
             short[] pending = null;
             int pendingOff = 0;

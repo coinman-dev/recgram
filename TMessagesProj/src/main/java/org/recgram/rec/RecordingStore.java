@@ -36,7 +36,7 @@ final class RecordingStore {
                 ContentResolver cr = ApplicationLoader.applicationContext.getContentResolver();
                 ContentValues v = new ContentValues();
                 v.put(MediaStore.MediaColumns.DISPLAY_NAME, src.getName());
-                v.put(MediaStore.MediaColumns.MIME_TYPE, "audio/mp4");
+                v.put(MediaStore.MediaColumns.MIME_TYPE, CallRecorder.mimeType());
                 v.put(MediaStore.MediaColumns.RELATIVE_PATH, relativeDir());
                 v.put(MediaStore.MediaColumns.TITLE, title);
                 v.put(MediaStore.Audio.Media.ARTIST, "RecGram");
