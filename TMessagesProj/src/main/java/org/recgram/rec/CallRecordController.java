@@ -92,8 +92,8 @@ public final class CallRecordController {
         }
         notifiedThisCall = true;
         String text = incoming
-                ? "🔴 Если ответить, этот звонок будет записан · If answered, this call will be recorded (RecGram)"
-                : "🔴 Этот звонок будет записан · This call will be recorded (RecGram)";
+                ? s("🔴 Если ответить, этот звонок будет записан (RecGram)", "🔴 If answered, this call will be recorded (RecGram)")
+                : s("🔴 Этот звонок будет записан (RecGram)", "🔴 This call will be recorded (RecGram)");
         SendMessagesHelper.getInstance(service.getAccount()).sendMessage(SendMessagesHelper.SendMessageParams.of(text, user.id));
     }
 
@@ -143,7 +143,7 @@ public final class CallRecordController {
             notifiedThisCall = true;
             peerNotified = true;
             SendMessagesHelper.getInstance(account).sendMessage(SendMessagesHelper.SendMessageParams.of(
-                    "🔴 Этот звонок записывается · This call is being recorded (RecGram)", peerId));
+                    s("🔴 Этот звонок записывается (RecGram)", "🔴 This call is being recorded (RecGram)"), peerId));
         }
     }
 
