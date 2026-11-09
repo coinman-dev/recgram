@@ -107,12 +107,74 @@ public class CountrySelectActivity extends UniversalFragment {
                         "Northern Cyprus networks show up as Turkey. If you are in Northern Cyprus, choose \"Cyprus\".")
                     : null));
         }
-        items.add(UItem.asHeader(s("Все страны", "All countries")));
+        items.add(UItem.asCustom(allHeader()));
+        String q = query.trim().toLowerCase(java.util.Locale.ROOT);
+        int shown = 0;
         for (int i = 0; i < groups.size(); i++) {
+            if (!q.isEmpty() && !matches(groups.get(i), q)) {
+                continue;
+            }
             items.add(row(ID_GROUP + i, groups.get(i), selected));
+            shown++;
+        }
+        if (shown == 0) {
+            items.add(UItem.asShadow(s("Ничего не найдено", "Nothing found")));
         }
         items.add(UItem.asShadow(s("Это справка, а не юридическая консультация. Законы меняются.",
                 "This is general information, not legal advice. Laws change.")));
+    }
+
+    private String query = "";
+    private android.widget.FrameLayout header;
+
+    /** Строка «Все страны» с полем поиска справа. */
+    private View allHeader() {
+        if (header != null) {
+            return header;
+        }
+        android.content.Context ctx = getContext();
+        header = new android.widget.FrameLayout(ctx);
+        header.setBackgroundColor(org.telegram.ui.ActionBar.Theme.getColor(org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhite));
+        android.widget.TextView title = new android.widget.TextView(ctx);
+        title.setText(s("Все страны", "All countries"));
+        title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, 15);
+        title.setTypeface(org.telegram.messenger.AndroidUtilities.bold());
+        title.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlueHeader));
+        header.addView(title, org.telegram.ui.Components.LayoutHelper.createFrame(-2, -2, android.view.Gravity.LEFT | android.view.Gravity.CENTER_VERTICAL, 21, 0, 0, 0));
+        org.telegram.ui.Components.EditTextBoldCursor search = new org.telegram.ui.Components.EditTextBoldCursor(ctx);
+        search.setHint(s("🔍 Поиск", "🔍 Search"));
+        search.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, 15);
+        search.setSingleLine(true);
+        search.setGravity(android.view.Gravity.RIGHT | android.view.Gravity.CENTER_VERTICAL);
+        search.setTextColor(org.telegram.ui.ActionBar.Theme.getColor(org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
+        search.setHintTextColor(org.telegram.ui.ActionBar.Theme.getColor(org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteHintText));
+        search.setCursorColor(org.telegram.ui.ActionBar.Theme.getColor(org.telegram.ui.ActionBar.Theme.key_windowBackgroundWhiteBlackText));
+        search.setBackground(null);
+        search.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        search.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence c, int a, int b, int d) {}
+            @Override public void onTextChanged(CharSequence c, int a, int b, int d) {}
+            @Override public void afterTextChanged(android.text.Editable e) {
+                query = e.toString();
+                listView.adapter.update(false);
+            }
+        });
+        header.addView(search, org.telegram.ui.Components.LayoutHelper.createFrame(180, 44, android.view.Gravity.RIGHT | android.view.Gravity.CENTER_VERTICAL, 0, 0, 16, 0));
+        header.setMinimumHeight(org.telegram.messenger.AndroidUtilities.dp(48));
+        return header;
+    }
+
+    /** Поиск по названию на языке интерфейса, по-английски, по ISO-коду и регионам. */
+    private static boolean matches(List<RecordingRules.Country> g, String q) {
+        String iso = g.get(0).iso;
+        if (iso.toLowerCase(java.util.Locale.ROOT).startsWith(q)) return true;
+        if (groupName(g).toLowerCase().contains(q)) return true;
+        if (new java.util.Locale("", iso).getDisplayCountry(java.util.Locale.ENGLISH).toLowerCase(java.util.Locale.ROOT).contains(q)) return true;
+        for (RecordingRules.Country c : g) {
+            if (c.regionRu != null && c.regionRu.toLowerCase().contains(q)) return true;
+            if (c.regionEn != null && c.regionEn.toLowerCase(java.util.Locale.ROOT).contains(q)) return true;
+        }
+        return false;
     }
 
     @Override
