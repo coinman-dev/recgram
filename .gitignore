@@ -19,3 +19,7 @@ TMessagesProj/jni/ffmpeg/build_android
 /.ai/
 /tmp/
 /builds/
+
+# Секреты: ключ подписи, API-ключ (см. secrets/README.md)
+/secrets/*
+!/secrets/README.md
