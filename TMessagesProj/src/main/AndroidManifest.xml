@@ -111,6 +111,14 @@
     >
         <!-- usesCleartextTraffic for browser supporting opening http:// links -->
 
+        <!-- RecGram: перезапуск приложения (отдельный процесс, см. ApiKeys.restartApp) -->
+        <activity
+            android:name="org.recgram.ui.RestartActivity"
+            android:process=":restart"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <activity-alias
             android:enabled="true"
             android:name="org.telegram.messenger.DefaultIcon"

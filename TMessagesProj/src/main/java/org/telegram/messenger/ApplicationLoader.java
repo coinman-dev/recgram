@@ -287,6 +287,11 @@ public class ApplicationLoader extends Application {
 
     @Override
     public void onCreate() {
+        // RecGram: служебный процесс перезапуска (org.recgram.ui.RestartActivity) ничего не инициализирует
+        if (org.recgram.ui.RestartActivity.isRestartProcess()) {
+            super.onCreate();
+            return;
+        }
         applicationLoaderInstance = this;
         try {
             applicationContext = getApplicationContext();

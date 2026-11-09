@@ -111,15 +111,13 @@ public final class ApiKeys {
 
     /** Перезапуск приложения, чтобы новый ключ подхватился сетевым модулем. */
     public static void restartApp() {
+        // Будильник с PendingIntent на Android 10+ запускает процесс, но не открывает окно из фона.
+        // Поэтому, пока приложение на экране, запускаем служебный экран в отдельном процессе — он и откроет RecGram.
         Context ctx = ApplicationLoader.applicationContext;
-        Intent intent = ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName());
-        if (intent != null) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            PendingIntent pi = PendingIntent.getActivity(ctx, 0x52454347, intent,
-                    PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
-            am.set(AlarmManager.RTC, System.currentTimeMillis() + 600, pi);
-        }
-        System.exit(0);
+        Intent intent = new Intent(ctx, org.recgram.ui.RestartActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        intent.putExtra(org.recgram.ui.RestartActivity.EXTRA_PID, android.os.Process.myPid());
+        ctx.startActivity(intent);
+        Runtime.getRuntime().exit(0);
     }
 }
