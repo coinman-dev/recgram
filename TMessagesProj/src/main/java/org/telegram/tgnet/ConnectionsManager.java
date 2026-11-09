@@ -1048,6 +1048,7 @@ public class ConnectionsManager extends BaseController {
     public static native void native_init(int currentAccount, int version, int layer, int apiId, String deviceModel, String systemVersion, String appVersion, String langCode, String systemLangCode, String configPath, String logPath, String regId, String cFingerprint, String installer, String packageId, int timezoneOffset, long userId, boolean userPremium, boolean enablePushConnection, boolean hasNetwork, int networkType, int performanceClass);
     public static native void native_setProxySettings(int currentAccount, String address, int port, String username, String password, String secret);
     public static native void native_setDpiDesync(int mode, boolean direct); // RecGram: защита от DPI
+    public static native void native_recgramReconnect(int currentAccount); // RecGram: переподключить всё
     public static native void native_setLangCode(int currentAccount, String langCode);
     public static native void native_setRegId(int currentAccount, String regId);
     public static native void native_setSystemLangCode(int currentAccount, String langCode);

@@ -100,8 +100,72 @@ public final class Bypass {
 
     /** Переподключиться с текущими настройками прокси, чтобы новый режим подействовал сразу. */
     private static void reconnect() {
-        boolean enabled = SharedConfig.isProxyEnabled();
-        ConnectionsManager.setProxySettings(enabled, enabled ? SharedConfig.currentProxy.settings : ProxySettings.EMPTY);
+        // сетевой модуль сам переподключается только при смене прокси — переподключаем явно
+        for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
+            if (a == UserConfig.selectedAccount || UserConfig.getInstance(a).isClientActivated()) {
+                try {
+                    ConnectionsManager.native_recgramReconnect(a);
+                } catch (Throwable e) {
+                    FileLog.e(e);
+                }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ автоподбор без прокси
+
+    /**
+     * Автоподбор для прямого подключения (когда прокси нет): по очереди включает режимы
+     * «выключена → разрез → разрез + обратный порядок» (с флажком для прямых соединений),
+     * переподключается и ждёт связи до DIRECT_WAIT_MS. Оставляет первый режим, в котором связь появилась.
+     * Ход — progress.onStep(mode, step, steps, секунд прошло, секунд всего, 0). Результат — [режим, секунд до связи] или null.
+     */
+    public static final int DIRECT_WAIT_MS = 40000;
+
+    public static void autoSelectDirect(AutoProgress progress, Consumer<long[]> done) {
+        int[] modes = {DPI_OFF, DPI_SPLIT, DPI_DISORDER};
+        int startMode = getDpiMode();
+        boolean startDirect = isDpiDirect();
+        tryDirect(modes, 0, progress, r -> {
+            if (r == null) {
+                setDpi(startMode, startDirect);
+            }
+            done.accept(r);
+        });
+    }
+
+    private static boolean isConnected() {
+        int st = ConnectionsManager.getInstance(UserConfig.selectedAccount).getConnectionState();
+        return st == ConnectionsManager.ConnectionStateConnected || st == ConnectionsManager.ConnectionStateUpdating;
+    }
+
+    private static void tryDirect(int[] modes, int i, AutoProgress progress, Consumer<long[]> done) {
+        if (i >= modes.length) {
+            done.accept(null);
+            return;
+        }
+        int mode = modes[i];
+        setDpi(mode, mode != DPI_OFF); // сохраняет, передаёт в сетевой модуль и переподключает
+        long start = android.os.SystemClock.elapsedRealtime();
+        int totalSec = DIRECT_WAIT_MS / 1000;
+        Runnable[] tick = new Runnable[1];
+        tick[0] = () -> {
+            long sec = (android.os.SystemClock.elapsedRealtime() - start) / 1000;
+            // первые 2 с не верим «связь есть» — это может быть старое состояние до переподключения
+            if (sec >= 2 && isConnected()) {
+                if (progress != null) progress.onModeDone(mode, 1, sec * 1000);
+                done.accept(new long[]{mode, sec});
+                return;
+            }
+            if (sec >= totalSec) {
+                if (progress != null) progress.onModeDone(mode, 0, 0);
+                tryDirect(modes, i + 1, progress, done);
+                return;
+            }
+            if (progress != null) progress.onStep(mode, i + 1, modes.length, (int) sec, totalSec, 0);
+            AndroidUtilities.runOnUIThread(tick[0], 1000);
+        };
+        AndroidUtilities.runOnUIThread(tick[0], 1000);
     }
 
     // ------------------------------------------------------------------ импорт

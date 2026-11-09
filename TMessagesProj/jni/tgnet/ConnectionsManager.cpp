@@ -3819,6 +3819,20 @@ void ConnectionsManager::setProxySettings(std::string address, uint16_t port, st
     });
 }
 
+// RecGram: переподключить все соединения, чтобы новый режим защиты от DPI подействовал сразу
+void ConnectionsManager::recgramReconnect() {
+    scheduleTask([&] {
+        for (auto &datacenter : datacenters) {
+            datacenter.second->suspendConnections(true);
+        }
+        Datacenter *datacenter = getDatacenterWithId(DEFAULT_DATACENTER_ID);
+        if (datacenter != nullptr && datacenter->isHandshakingAny()) {
+            datacenter->beginHandshake(HandshakeTypeCurrent, true);
+        }
+        processRequestQueue(0, 0);
+    });
+}
+
 void ConnectionsManager::setLangCode(std::string langCode) {
     scheduleTask([&, langCode] {
         if (currentLangCode == langCode) {

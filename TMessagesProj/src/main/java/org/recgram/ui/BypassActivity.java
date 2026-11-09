@@ -169,7 +169,7 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             items.add(UItem.asButton(ID_SUB_UPDATE, s("Обновить подписку", "Update subscription")));
         }
         items.add(UItem.asButton(ID_BEST, checking ? "⏳ " + s("Проверяю прокси…", "Checking proxies…")
-                : s("Проверить все и включить самый быстрый", "Check all and use the fastest")).accent());
+                : s("Проверить и включить лучший", "Check and use the best")).accent());
         if (checking && checkProgress != null) {
             items.add(UItem.asShadow("⏳ " + checkProgress));
         }
@@ -287,10 +287,38 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
         } else if (id == ID_AUTO) {
             if (busy || checking) return;
             autoLog.setLength(0);
-            if (SharedConfig.proxyList.isEmpty()) {
-                autoLog.append(s("Для автоподбора нужен хотя бы один прокси в списке: добавьте прокси выше.",
-                        "Automatic selection needs at least one proxy in the list: add proxies above."));
+            if (SharedConfig.proxyList.isEmpty() || !SharedConfig.isProxyEnabled()) {
+                // прокси нет или он выключен — подбираем режим для прямого подключения по факту связи
+                busy = true;
+                autoProgress = null;
+                autoLog.append(s("Прокси не используется — проверяю прямое подключение к Telegram в 3 режимах, до 40 секунд на режим.\n",
+                        "No proxy in use — checking the direct connection to Telegram in 3 modes, up to 40 seconds per mode.\n"));
                 update();
+                Bypass.autoSelectDirect(new Bypass.AutoProgress() {
+                    @Override
+                    public void onStep(int mode, int step, int steps, int sec, int total, int ignored) {
+                        autoProgress = s("Сейчас: режим ", "Now: mode ") + step + s(" из ", " of ") + steps + " — «" + modeTitle(mode) + "», "
+                                + s("жду связь: ", "waiting for connection: ") + sec + s(" из ", " of ") + total + s(" с", " s");
+                        update();
+                    }
+
+                    @Override
+                    public void onModeDone(int mode, int ok, long ms) {
+                        autoLog.append("• ").append(modeTitle(mode)).append(": ")
+                                .append(ok > 0 ? s("связь есть через ", "connected after ") + (ms / 1000) + s(" с", " s")
+                                        : s("связи нет", "no connection"))
+                                .append('\n');
+                        update();
+                    }
+                }, r -> {
+                    busy = false;
+                    autoProgress = null;
+                    autoLog.append(r == null
+                            ? s("Итог: напрямую Telegram недоступен ни в одном режиме — нужен прокси. Добавьте его выше (импорт или подписка).",
+                                "Result: Telegram is unreachable directly in every mode — a proxy is needed. Add one above (import or subscription).")
+                            : s("Итог: выбран режим «", "Result: selected mode \"") + modeTitle((int) r[0]) + s("».", "\"."));
+                    update();
+                });
                 return;
             }
             busy = true;
