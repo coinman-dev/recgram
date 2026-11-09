@@ -23,6 +23,7 @@ public class RecordingSettingsActivity extends UniversalFragment {
     private static final int ID_VIDEO = 21;
     private static final int ID_NOTIFY = 22;
     private static final int ID_LEVEL = 23;
+    private static final int ID_RECORDINGS = 30;
 
     @Override
     protected CharSequence getTitle() {
@@ -42,6 +43,8 @@ public class RecordingSettingsActivity extends UniversalFragment {
         RecordingRules.Country c = RecordingRules.selected();
         boolean allowed = RecordingRules.isRecordingAllowed();
 
+        items.add(UItem.asButton(ID_RECORDINGS, org.telegram.messenger.R.drawable.msg_voicechat, s("Записи звонков", "Call recordings")));
+        items.add(UItem.asShadow(null));
         items.add(UItem.asHeader(s("В какой стране вы находитесь?", "Which country are you in?")));
         items.add(UItem.asButton(ID_COUNTRY,
                 c == null ? s("Выбрать страну", "Choose country") : RuleTexts.dotted(c),
@@ -78,6 +81,9 @@ public class RecordingSettingsActivity extends UniversalFragment {
     protected void onClick(UItem item, View view, int position, float x, float y) {
         boolean allowed = RecordingRules.isRecordingAllowed();
         switch (item.id) {
+            case ID_RECORDINGS:
+                presentFragment(new RecordingsActivity());
+                return;
             case ID_COUNTRY:
                 presentFragment(new CountrySelectActivity());
                 return;
