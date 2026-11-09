@@ -809,8 +809,10 @@ public class IntroActivity extends BaseFragment implements NotificationCenter.No
                 Canvas c = new Canvas(bm);
                 Drawable glyph = getParentActivity().getResources().getDrawable(R.drawable.recgram_icon_foreground);
                 // облачко в слое иконки занимает x 35..73, y 37..72.5 из 108
-                float scale = Math.min(w / 38f, h / 35.5f) * 0.9f;
-                c.translate(w / 2f - 54f * scale, h / 2f - 54.75f * scale);
+                // Telegram рисует самолётик со смещением от центра круга (≈ −7.4% ширины, +7.4% высоты текстуры),
+                // поэтому облачко сдвигается обратно и чуть уменьшается, чтобы не обрезаться
+                float scale = Math.min(w / 38f, h / 35.5f) * 0.84f;
+                c.translate(w / 2f + 0.074f * w - 54f * scale, h / 2f - 0.0735f * h - 54.75f * scale);
                 glyph.setBounds(0, 0, Math.round(108 * scale), Math.round(108 * scale));
                 glyph.draw(c);
                 return bm;
