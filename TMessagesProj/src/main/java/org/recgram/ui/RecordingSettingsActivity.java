@@ -24,6 +24,9 @@ public class RecordingSettingsActivity extends UniversalFragment {
     private static final int ID_NOTIFY = 22;
     private static final int ID_LEVEL = 23;
     private static final int ID_RECORDINGS = 30;
+    private static final int ID_CODEC_HEVC = 40;
+    private static final int ID_CODEC_AVC = 41;
+    private static final int ID_BITRATE_BASE = 50;
 
     @Override
     protected CharSequence getTitle() {
@@ -73,8 +76,25 @@ public class RecordingSettingsActivity extends UniversalFragment {
         items.add(UItem.asCheck(ID_VIDEO, s("Видео в видеозвонках", "Video in video calls")).setChecked(RecGramConfig.isRecordVideo()).setEnabled(allowed));
         items.add(UItem.asCheck(ID_LEVEL, s("Выравнивать громкость голосов", "Even out voice volume")).setChecked(RecGramConfig.isAutoLevel()).setEnabled(allowed));
         items.add(UItem.asCheck(ID_NOTIFY, s("Сообщать собеседнику о записи", "Tell the other party about recording")).setChecked(RecGramConfig.isNotifyPeer()).setEnabled(allowed));
-        items.add(UItem.asShadow(s("В начале записи собеседнику уйдёт сообщение «Этот звонок записывается». Пока записываются только личные звонки. Запись: Opus, моно, 64 кбит/с, папка Recordings/RecGram, рядом файл .json с данными звонка.",
-                "When recording starts, the other party gets the message \"This call is being recorded\". For now only private calls are recorded. Format: Opus, mono, 64 kbps, folder Recordings/RecGram, with a .json file with call data next to it.")));
+        items.add(UItem.asShadow(s("Звонки записываются в Opus, моно, 64 кбит/с — папка Recordings/RecGram, данные звонка внутри файла. Видеозвонки — в MP4, папка Movies/RecGram. Сообщение о записи уходит собеседнику до ответа на звонок.",
+                "Calls are recorded as Opus, mono, 64 kbps in Recordings/RecGram, call data inside the file. Video calls are recorded as MP4 in Movies/RecGram. The recording notice is sent to the other party before the call is answered.")));
+
+        if (RecGramConfig.isRecordVideo()) {
+            boolean hevc = RecGramConfig.isVideoHevc();
+            items.add(UItem.asHeader(s("Кодек видео", "Video codec")));
+            items.add(UItem.asRadio(ID_CODEC_HEVC, "H.265").setChecked(hevc).setEnabled(allowed));
+            items.add(UItem.asRadio(ID_CODEC_AVC, "H.264").setChecked(!hevc).setEnabled(allowed));
+            items.add(UItem.asShadow(s("H.265 даёт ~30% экономии размера, но старые плееры (программы) не умеют его проигрывать. Если телефон не умеет кодировать H.265, запись пойдёт в H.264.",
+                    "H.265 saves ~30% of size, but older players cannot play it. If the phone cannot encode H.265, H.264 is used.")));
+            items.add(UItem.asHeader(s("Битрейт видео", "Video bitrate")));
+            int[] opts = hevc ? RecGramConfig.VIDEO_BITRATES_HEVC : RecGramConfig.VIDEO_BITRATES_AVC;
+            int current = RecGramConfig.getVideoBitrate(hevc);
+            for (int i = 0; i < opts.length; i++) {
+                items.add(UItem.asRadio(ID_BITRATE_BASE + i, String.format(java.util.Locale.US, "%.1f Mb/s", opts[i] / 1_000_000f))
+                        .setChecked(opts[i] == current).setEnabled(allowed));
+            }
+            items.add(UItem.asShadow(s("Выше битрейт — лучше картинка, но больше файл.", "Higher bitrate — better picture, bigger file.")));
+        }
     }
 
     @Override
@@ -84,6 +104,11 @@ public class RecordingSettingsActivity extends UniversalFragment {
             case ID_RECORDINGS:
                 presentFragment(new RecordingsActivity());
                 return;
+            case ID_CODEC_HEVC:
+            case ID_CODEC_AVC:
+                if (!allowed) return;
+                RecGramConfig.setVideoHevc(item.id == ID_CODEC_HEVC);
+                break;
             case ID_COUNTRY:
                 presentFragment(new CountrySelectActivity());
                 return;
@@ -112,7 +137,12 @@ public class RecordingSettingsActivity extends UniversalFragment {
                 RecGramConfig.setNotifyPeer(!RecGramConfig.isNotifyPeer());
                 break;
             default:
-                return;
+                int bi = item.id - ID_BITRATE_BASE;
+                boolean hevc = RecGramConfig.isVideoHevc();
+                int[] opts = hevc ? RecGramConfig.VIDEO_BITRATES_HEVC : RecGramConfig.VIDEO_BITRATES_AVC;
+                if (!allowed || bi < 0 || bi >= opts.length) return;
+                RecGramConfig.setVideoBitrate(hevc, opts[bi]);
+                break;
         }
         listView.adapter.update(true);
     }

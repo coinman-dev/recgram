@@ -36,6 +36,20 @@ public final class RecGramConfig {
     public static void setRecordVideo(boolean v) { put("record_video", v); }
     public static boolean isNotifyPeer() { return b("notify_peer", true); }
     public static void setNotifyPeer(boolean v) { put("notify_peer", v); }
+    /** Кодек видеозаписи: H.265 (по умолчанию) или H.264. */
+    public static boolean isVideoHevc() { return b("video_hevc", true); }
+    public static void setVideoHevc(boolean v) { put("video_hevc", v); }
+    public static final int[] VIDEO_BITRATES_HEVC = {2_000_000, 2_500_000, 3_000_000};
+    public static final int[] VIDEO_BITRATES_AVC = {2_500_000, 3_000_000, 3_500_000};
+    public static int getVideoBitrate(boolean hevc) {
+        int[] opts = hevc ? VIDEO_BITRATES_HEVC : VIDEO_BITRATES_AVC;
+        int v = prefs().getInt(hevc ? "video_bitrate_hevc" : "video_bitrate_avc", opts[0]);
+        for (int o : opts) if (o == v) return v;
+        return opts[0];
+    }
+    public static void setVideoBitrate(boolean hevc, int bps) {
+        prefs().edit().putInt(hevc ? "video_bitrate_hevc" : "video_bitrate_avc", bps).apply();
+    }
     /** Выравнивать громкость голосов при записи. */
     public static boolean isAutoLevel() { return b("auto_level", true); }
     public static void setAutoLevel(boolean v) { put("auto_level", v); }

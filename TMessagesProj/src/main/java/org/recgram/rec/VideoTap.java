@@ -28,7 +28,9 @@ final class VideoTap {
     private static final int W = 720;
     private static final int H = 1280;
     private static final int FPS = 30;
-    private static final int BITRATE = 2_500_000;
+
+    /** Кодек и битрейт, с которыми реально идёт запись (для данных звонка). */
+    static volatile String lastCodec = "";
 
     private final MuxerHub hub;
     private final long startNs;
@@ -65,13 +67,17 @@ final class VideoTap {
 
     private void init() {
         try {
-            MediaFormat f = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, W, H);
+            boolean hevc = org.recgram.RecGramConfig.isVideoHevc() && hasEncoder(MediaFormat.MIMETYPE_VIDEO_HEVC);
+            String mime = hevc ? MediaFormat.MIMETYPE_VIDEO_HEVC : MediaFormat.MIMETYPE_VIDEO_AVC;
+            int bitrate = org.recgram.RecGramConfig.getVideoBitrate(hevc);
+            MediaFormat f = MediaFormat.createVideoFormat(mime, W, H);
             f.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
-            f.setInteger(MediaFormat.KEY_BIT_RATE, BITRATE);
+            f.setInteger(MediaFormat.KEY_BIT_RATE, bitrate);
             f.setInteger(MediaFormat.KEY_FRAME_RATE, FPS);
             f.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
-            encoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
+            encoder = MediaCodec.createEncoderByType(mime);
             encoder.configure(f, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+            lastCodec = (hevc ? "h265" : "h264") + " " + W + "x" + H + " " + (bitrate / 100_000) / 10.0 + " Mbps";
             input = encoder.createInputSurface();
             encoder.start();
             egl = EglBase.create(VideoCapturerDevice.getEglBase().getEglBaseContext(), EglBase.CONFIG_RECORDABLE);
@@ -88,6 +94,17 @@ final class VideoTap {
             failed = true;
             releaseGl();
             hub.abandonTrack();
+        }
+    }
+
+    /** Есть ли аппаратный кодировщик для mime с нашим размером кадра. */
+    static boolean hasEncoder(String mime) {
+        try {
+            MediaFormat f = MediaFormat.createVideoFormat(mime, W, H);
+            f.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
+            return new android.media.MediaCodecList(android.media.MediaCodecList.REGULAR_CODECS).findEncoderForFormat(f) != null;
+        } catch (Throwable e) {
+            return false;
         }
     }
 
