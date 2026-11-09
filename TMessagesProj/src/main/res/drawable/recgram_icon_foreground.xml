@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- RecGram: оригинальный самолётик Telegram того же размера, перекрашенный в красный -->
+<!-- RecGram: оригинальный белый самолётик Telegram того же размера -->
 <bitmap xmlns:android="http://schemas.android.com/apk/res/android"
     android:src="@mipmap/icon_foreground"
-    android:gravity="fill"
-    android:tint="#FFFF3B30"
-    android:tintMode="src_in" />
+    android:gravity="fill" />
