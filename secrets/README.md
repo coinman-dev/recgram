@@ -35,3 +35,16 @@ local.properties -> secrets/android-local.properties
 
 Без ключа подписи сборка тоже работает — APK подписывается тестовым ключом из
 репозитория Telegram, но такой APK нельзя поставить поверх версии с нашей подписью.
+
+## GitHub Actions
+
+Workflow `.github/workflows/release.yml` подписывает релизы тем же ключом. Секреты репозитория
+(Settings → Secrets and variables → Actions):
+
+| Секрет | Значение |
+|---|---|
+| `RECGRAM_KEYSTORE_BASE64` | `base64 -w0 secrets/recgram-release.jks` |
+| `RECGRAM_KEYSTORE_PASSWORD`, `RECGRAM_KEY_ALIAS`, `RECGRAM_KEY_PASSWORD` | из `android-local.properties` |
+
+Без `RECGRAM_KEYSTORE_BASE64` workflow останавливается, а не подписывает тестовым ключом Telegram.
+После сборки он сверяет SHA-256 сертификата APK с указанным выше.

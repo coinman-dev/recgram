@@ -1,0 +1,104 @@
+# RecGram: подписанный APK по тегу v* (публикуется в Releases) или вручную (только артефакт).
+# v1.2.3 — стабильный релиз, v1.2.3-beta.1 / v1.2.3-rc.1 — пререлиз.
+# Ключ подписи — в секретах репозитория (см. secrets/README.md, раздел «GitHub Actions»).
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      NDK_VERSION: 27.2.12479018
+      CMAKE_VERSION: 3.22.1
+      ABIS: arm64-v8a,armeabi-v7a
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Кэш, созданный на теге, виден только этому тегу; общий кэш наполняет ручной запуск на main
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: NDK и CMake
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK_VERSION" "cmake;$CMAKE_VERSION" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+
+      - name: Кэш нативной сборки
+        uses: actions/cache@v4
+        with:
+          path: |
+            TMessagesProj/.cxx
+            TMessagesProj_App/.cxx
+          key: cxx-${{ runner.os }}-${{ env.NDK_VERSION }}-${{ hashFiles('TMessagesProj/jni/**/CMakeLists.txt', '.gitmodules') }}
+          restore-keys: cxx-${{ runner.os }}-${{ env.NDK_VERSION }}-
+
+      - name: Ключ подписи
+        env:
+          KEYSTORE_B64: ${{ secrets.RECGRAM_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Нет секрета RECGRAM_KEYSTORE_BASE64 — APK подписался бы тестовым ключом Telegram"
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/recgram-release.jks"
+          echo "RECGRAM_KEYSTORE=$RUNNER_TEMP/recgram-release.jks" >> "$GITHUB_ENV"
+
+      - name: Сборка
+        env:
+          RECGRAM_KEYSTORE_PASSWORD: ${{ secrets.RECGRAM_KEYSTORE_PASSWORD }}
+          RECGRAM_KEY_ALIAS: ${{ secrets.RECGRAM_KEY_ALIAS }}
+          RECGRAM_KEY_PASSWORD: ${{ secrets.RECGRAM_KEY_PASSWORD }}
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          ./gradlew --no-configuration-cache -PrecgramAbis="$ABIS" :TMessagesProj_App:assembleAfatRelease
+
+      - name: Проверка подписи
+        env:
+          EXPECTED: A1:16:F9:46:5E:D8:A2:98:66:B3:F2:1D:6F:A7:58:BF:81:BA:24:DD:24:18:42:B6:70:D4:0C:A2:76:BC:69:D9
+        run: |
+          APK=TMessagesProj_App/build/outputs/apk/afat/release/app.apk
+          SHA=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$APK" | sed -n 's/.*certificate SHA-256 digest: //p' | head -1 | tr 'a-f' 'A-F' | sed 's/../&:/g; s/:$//')
+          echo "SHA-256: $SHA"
+          [ "$SHA" = "$EXPECTED" ] || { echo "::error::APK подписан не ключом RecGram"; exit 1; }
+          NAME="RecGram-${GITHUB_REF_NAME//\//-}.apk"
+          cp "$APK" "$NAME"
+          echo "APK_NAME=$NAME" >> "$GITHUB_ENV"
+
+      - name: Артефакт (ручной запуск)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          path: ${{ env.APK_NAME }}
+          retention-days: 3
+
+      - name: Релиз
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PRE=""
+          case "$GITHUB_REF_NAME" in *-*) PRE="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" "$APK_NAME" $PRE --title "RecGram $GITHUB_REF_NAME" --generate-notes
