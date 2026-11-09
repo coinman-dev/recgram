@@ -104,7 +104,23 @@ public class RecordingsActivity extends UniversalFragment {
         java.util.regex.Matcher m = java.util.regex.Pattern
                 .compile("^(.*)_(\\d{4})-(\\d{2})-(\\d{2})_(\\d{2})-(\\d{2})-(\\d{2})$").matcher(base);
         if (m.matches()) {
-            return m.group(4) + "." + m.group(3) + " " + m.group(5) + ":" + m.group(6) + " · " + m.group(1).replace("→", " → ");
+            String who = m.group(1);
+            int arrow = who.indexOf('→');
+            if (arrow > 0) {
+                // Одна сторона — всегда владелец: показываем только собеседника со стрелкой
+                org.telegram.tgnet.TLRPC.User me = org.telegram.messenger.UserConfig.getInstance(
+                        org.telegram.messenger.UserConfig.selectedAccount).getCurrentUser();
+                String myName = me != null ? org.telegram.messenger.UserObject.getUserName(me).replaceAll("[\\\\/:*?\"<>|]", "").trim() : "";
+                String from = who.substring(0, arrow), to = who.substring(arrow + 1);
+                if (!myName.isEmpty() && from.equals(myName)) {
+                    who = "→ " + to;
+                } else if (!myName.isEmpty() && to.equals(myName)) {
+                    who = "← " + from;
+                } else {
+                    who = from + " → " + to;
+                }
+            }
+            return m.group(4) + "." + m.group(3) + " " + m.group(5) + ":" + m.group(6) + " · " + who;
         }
         String date = new java.text.SimpleDateFormat("dd.MM HH:mm", Locale.US).format(new Date(r.dateSec * 1000));
         return date + " · " + base;
