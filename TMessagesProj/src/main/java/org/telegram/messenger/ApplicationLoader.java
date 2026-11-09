@@ -324,6 +324,7 @@ public class ApplicationLoader extends Application {
         if (applicationContext == null) {
             applicationContext = getApplicationContext();
         }
+        org.recgram.ApiKeys.apply(); // RecGram: свой API-ключ пользователя, если задан
 
         NativeLoader.initNativeLibs(ApplicationLoader.applicationContext);
 

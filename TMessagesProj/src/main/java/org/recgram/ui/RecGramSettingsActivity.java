@@ -118,7 +118,7 @@ public class RecGramSettingsActivity extends UniversalFragment {
                 toggleSelfDestruct();
                 return;
             case ID_API:
-                BulletinFactory.of(this).createSimpleBulletin(R.raw.info, s("Смена ключа появится в следующей версии.", "Changing the key arrives in the next version.")).show();
+                presentFragment(new ApiKeyActivity());
                 return;
             default:
                 return;
@@ -154,7 +154,8 @@ public class RecGramSettingsActivity extends UniversalFragment {
             b.setTitle(s("Нужен свой API-ключ", "Your own API key is required"));
             b.setMessage(s("Сохранение исчезающих медиа нарушает правила Telegram API (п. 1.4), поэтому со встроенным ключом оно недоступно.",
                     "Saving self-destructing media violates the Telegram API terms (section 1.4), so it is not available with the built-in key."));
-            b.setPositiveButton(s("Понятно", "OK"), null);
+            b.setPositiveButton(s("Ввести свой ключ", "Enter your key"), (d, w) -> presentFragment(new ApiKeyActivity()));
+            b.setNegativeButton(s("Отмена", "Cancel"), null);
             showDialog(b.create());
             return;
         }
