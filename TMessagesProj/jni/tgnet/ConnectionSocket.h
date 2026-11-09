@@ -34,6 +34,9 @@ public:
     void dropConnection();
     void setOverrideProxy(std::string address, uint16_t port, std::string username, std::string password, std::string secret);
     void onHostNameResolved(std::string host, std::string ip, bool ipv6);
+    // RecGram: защита от DPI. mode: 0 — выкл, 1 — TCP-разрез, 2 — разрез + обратный порядок (TTL=1), 3 — разрез + OOB-байт.
+    // direct — также резать первый пакет соединений без fake-TLS (заголовок obfuscated2).
+    static void setDpiDesync(int32_t mode, bool direct);
 
 protected:
     int32_t instanceNum;
@@ -53,6 +56,8 @@ protected:
     uint16_t overrideProxyPort = 1080;
 
 private:
+    bool dpiFirstDataSent = false; // RecGram
+    ssize_t dpiSend(const uint8_t *buf, size_t len, size_t splitPos); // RecGram
     ByteStream *outgoingByteStream = nullptr;
     struct epoll_event eventMask;
     struct sockaddr_in socketAddress;

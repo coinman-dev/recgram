@@ -32,6 +32,63 @@
 #include "Connection.h"
 #include "TLSHello.h"
 #include <random>
+#include <atomic>
+#include <netinet/in.h>
+
+// RecGram: режим защиты от DPI (общий для всех соединений, задаётся из Java)
+static std::atomic<int32_t> recgramDpiMode{0};
+static std::atomic<bool> recgramDpiDirect{false};
+
+void ConnectionSocket::setDpiDesync(int32_t mode, bool direct) {
+    recgramDpiMode = mode;
+    recgramDpiDirect = direct;
+}
+
+// RecGram: отправка первого пакета с разрезом на позиции splitPos. Данные для сервера не меняются:
+// разрез на уровне TCP, «обратный порядок» — первая часть уходит с TTL=1, умирает на первом узле
+// и досылается ядром позже; OOB — к первой части добавляется срочный байт, который сервер отбрасывает.
+ssize_t ConnectionSocket::dpiSend(const uint8_t *buf, size_t len, size_t splitPos) {
+    int32_t mode = recgramDpiMode;
+    if (mode <= 0 || splitPos == 0 || splitPos >= len) {
+        return send(socketFd, buf, len, 0);
+    }
+    int one = 1;
+    setsockopt(socketFd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+    ssize_t first;
+    if (mode == 2) {
+        sockaddr_storage local;
+        socklen_t localLen = sizeof(local);
+        bool v6 = getsockname(socketFd, (sockaddr *) &local, &localLen) == 0 && local.ss_family == AF_INET6;
+        int level = v6 ? IPPROTO_IPV6 : IPPROTO_IP;
+        int opt = v6 ? IPV6_UNICAST_HOPS : IP_TTL;
+        int oldTtl = 64;
+        socklen_t ttlLen = sizeof(oldTtl);
+        getsockopt(socketFd, level, opt, &oldTtl, &ttlLen);
+        int low = 1;
+        setsockopt(socketFd, level, opt, &low, sizeof(low));
+        first = send(socketFd, buf, splitPos, 0);
+        setsockopt(socketFd, level, opt, &oldTtl, sizeof(oldTtl));
+    } else if (mode == 3 && splitPos < 4096) {
+        uint8_t chunk[4097];
+        memcpy(chunk, buf, splitPos);
+        chunk[splitPos] = 'X';
+        first = send(socketFd, chunk, splitPos + 1, MSG_OOB);
+        if (first > (ssize_t) splitPos) {
+            first = (ssize_t) splitPos;
+        }
+    } else {
+        first = send(socketFd, buf, splitPos, 0);
+    }
+    if (first < 0) {
+        return first;
+    }
+    ssize_t rest = send(socketFd, buf + first, len - (size_t) first, 0);
+    if (rest < 0) {
+        return first > 0 ? first : rest;
+    }
+    if (LOGS_ENABLED) DEBUG_D("connection(%p) dpi desync mode %d split %d of %d", this, mode, (int) splitPos, (int) len);
+    return first + rest;
+}
 
 #ifndef EPOLLRDHUP
 #define EPOLLRDHUP 0x2000
@@ -73,6 +130,7 @@ void ConnectionSocket::openConnection(std::string address, uint16_t port, std::s
     waitingForHostResolve = "";
     adjustWriteOpAfterResolve = false;
     tlsState = 0;
+    dpiFirstDataSent = false; // RecGram
     ConnectionsManager::getInstance(instanceNum).attachConnection(this);
 
     memset(&socketAddress, 0, sizeof(sockaddr_in));
@@ -526,7 +584,15 @@ void ConnectionSocket::onEvent(uint32_t events) {
                         memcpy(tempBuffer->bytes + 11, tempBuffer->bytes + 64 * 1024, 32);
                         bytesRead = 0;
 
-                        if (send(socketFd, tempBuffer->bytes, size, 0) < 0) {
+                        // RecGram: ClientHello режется посередине имени сайта (SNI), где его ищет DPI
+                        size_t sniSplit = 0;
+                        if (!currentSecretDomain.empty()) {
+                            uint8_t *found = (uint8_t *) memmem(tempBuffer->bytes, size, currentSecretDomain.data(), currentSecretDomain.size());
+                            if (found != nullptr) {
+                                sniSplit = (size_t) (found - tempBuffer->bytes) + std::max<size_t>(1, currentSecretDomain.size() / 2);
+                            }
+                        }
+                        if (dpiSend(tempBuffer->bytes, size, sniSplit) < 0) {
                             if (LOGS_ENABLED) DEBUG_E("connection(%p) send failed", this);
                             closeSocket(1, -1);
                             return;
@@ -636,7 +702,13 @@ void ConnectionSocket::onEvent(uint32_t events) {
                             adjustWriteOp();
                         }
                     } else {
-                        if ((sentLength = send(socketFd, buffer->bytes(), remaining, 0)) < 0) {
+                        // RecGram: по флажку режется и первый пакет соединения без fake-TLS (заголовок obfuscated2)
+                        size_t firstSplit = 0;
+                        if (!dpiFirstDataSent && recgramDpiDirect) {
+                            firstSplit = remaining > 2 ? 2 : 0;
+                        }
+                        dpiFirstDataSent = true;
+                        if ((sentLength = firstSplit ? dpiSend(buffer->bytes(), remaining, firstSplit) : send(socketFd, buffer->bytes(), remaining, 0)) < 0) {
                             if (LOGS_ENABLED) DEBUG_D("connection(%p) send failed", this);
                             closeSocket(1, -1);
                             return;

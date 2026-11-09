@@ -431,6 +431,11 @@ void discardConnection(JNIEnv *env, jclass c,  jint instanceNum, jint datacenerI
     ConnectionsManager::getInstance(instanceNum).reconnect(datacenerId, connectionType);
 }
 
+// RecGram: режим защиты от DPI для всех соединений
+void setDpiDesync(JNIEnv *env, jclass c, jint mode, jboolean direct) {
+    ConnectionSocket::setDpiDesync(mode, direct);
+}
+
 void setLangCode(JNIEnv *env, jclass c, jint instanceNum, jstring langCode) {
     const char *langCodeStr = env->GetStringUTFChars(langCode, 0);
 
@@ -538,6 +543,7 @@ static JNINativeMethod ConnectionsManagerMethods[] = {
         {"native_setUserId", "(IJ)V", (void *) setUserId},
         {"native_init", "(IIIILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IJZZZII)V", (void *) init},
         {"native_setLangCode", "(ILjava/lang/String;)V", (void *) setLangCode},
+        {"native_setDpiDesync", "(IZ)V", (void *) setDpiDesync}, // RecGram
         {"native_setRegId", "(ILjava/lang/String;)V", (void *) setRegId},
         {"native_setSystemLangCode", "(ILjava/lang/String;)V", (void *) setSystemLangCode},
         {"native_switchBackend", "(IZ)V", (void *) switchBackend},

@@ -24,6 +24,7 @@ import java.util.ArrayList;
 public class RecGramSettingsActivity extends UniversalFragment {
 
     private static final int ID_RECORDING = 1;
+    private static final int ID_BYPASS = 2;
     private static final int ID_SCREENSHOTS = 10;
     private static final int ID_SECRET_NOTIFY = 11;
     private static final int ID_COPY = 12;
@@ -65,6 +66,12 @@ public class RecGramSettingsActivity extends UniversalFragment {
         items.add(UItem.asButton(ID_RECORDING, R.drawable.msg_voicechat, s("Запись звонков", "Call recording"), recValue));
         items.add(UItem.asShadow(null));
 
+        int dpi = org.recgram.bypass.Bypass.getDpiMode();
+        items.add(UItem.asHeader(s("Сеть", "Network")));
+        items.add(UItem.asButton(ID_BYPASS, R.drawable.msg_policy, s("Обход блокировок", "Bypass blocking"),
+                dpi == org.recgram.bypass.Bypass.DPI_OFF ? s("DPI: выкл", "DPI: off") : s("DPI: вкл", "DPI: on")));
+        items.add(UItem.asShadow(null));
+
         boolean custom = ApiKeys.isCustom();
         items.add(UItem.asHeader(s("Защищённый контент", "Protected content")));
         items.add(UItem.asCheck(ID_SCREENSHOTS, s("Разрешить скриншоты", "Allow screenshots")).setChecked(RecGramConfig.isAllowScreenshots()));
@@ -98,6 +105,9 @@ public class RecGramSettingsActivity extends UniversalFragment {
         switch (item.id) {
             case ID_RECORDING:
                 presentFragment(new RecordingSettingsActivity());
+                return;
+            case ID_BYPASS:
+                presentFragment(new BypassActivity());
                 return;
             case ID_SCREENSHOTS:
                 toggleProtected(() -> RecGramConfig.setAllowScreenshots(!RecGramConfig.isAllowScreenshots()), !RecGramConfig.isAllowScreenshots());
