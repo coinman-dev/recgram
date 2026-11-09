@@ -62,6 +62,7 @@ public final class CallRecorder {
     private volatile boolean stopping;
     private volatile boolean failed;
     private long frames;
+    private long aacFrames;
 
     private CallRecorder(File file, MuxerHub videoHub) {
         this.file = file;
@@ -270,6 +271,11 @@ public final class CallRecorder {
                         info.size = 0;
                     }
                     if (info.size > 0 && trackAdded) {
+                        if (!opus) {
+                            // AAC: ровные метки времени — 1024 отсчёта на кадр (кодировщик выдаёт их неравномерно)
+                            info.presentationTimeUs = aacFrames * 1024L * 1000000L / RATE;
+                            aacFrames++;
+                        }
                         hub.write(track, ob, info);
                     }
                     codec.releaseOutputBuffer(out, false);
