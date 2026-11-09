@@ -98,6 +98,18 @@ public class RecordingsActivity extends UniversalFragment {
         return dot > 0 ? name.substring(0, dot) : String.valueOf(name);
     }
 
+    /** «09.11 10:15 · Кто → Кому» из имени «Кто→Кому_ГГГГ-ММ-ДД_ЧЧ-ММ-СС». */
+    private static String rowTitle(Rec r) {
+        String base = baseName(r.name);
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("^(.*)_(\\d{4})-(\\d{2})-(\\d{2})_(\\d{2})-(\\d{2})-(\\d{2})$").matcher(base);
+        if (m.matches()) {
+            return m.group(4) + "." + m.group(3) + " " + m.group(5) + ":" + m.group(6) + " · " + m.group(1).replace("→", " → ");
+        }
+        String date = new java.text.SimpleDateFormat("dd.MM HH:mm", Locale.US).format(new Date(r.dateSec * 1000));
+        return date + " · " + base;
+    }
+
     private static String duration(long ms) {
         long sec = ms / 1000;
         return sec >= 3600 ? String.format(Locale.US, "%d:%02d:%02d", sec / 3600, sec / 60 % 60, sec % 60)
@@ -114,7 +126,7 @@ public class RecordingsActivity extends UniversalFragment {
         items.add(UItem.asHeader(s("Recordings/RecGram — ", "Recordings/RecGram — ") + recs.size()));
         for (int i = 0; i < recs.size(); i++) {
             Rec r = recs.get(i);
-            items.add(UItem.asButton(ID_BASE + i, baseName(r.name), duration(r.durationMs)));
+            items.add(UItem.asButton(ID_BASE + i, rowTitle(r), duration(r.durationMs)));
         }
         items.add(UItem.asShadow(s("Нажмите на запись, чтобы прослушать, поделиться, посмотреть данные звонка или удалить.",
                 "Tap a recording to play, share, view call data or delete it.")));
