@@ -209,7 +209,7 @@ public class RecordingsActivity extends UniversalFragment {
                 JSONObject o = new JSONObject(new String(data, 0, off, StandardCharsets.UTF_8));
                 line(sb, s("Начало", "Started"), o.optString("started"));
                 line(sb, s("Длительность", "Duration"), duration(o.optLong("duration_ms")));
-                line(sb, s("Направление", "Direction"), "outgoing".equals(o.optString("direction")) ? s("исходящий", "outgoing") : s("входящий", "incoming"));
+                line(sb, s("Направление", "Direction"), "group".equals(o.optString("direction")) ? s("групповой звонок", "group call") : "outgoing".equals(o.optString("direction")) ? s("исходящий", "outgoing") : s("входящий", "incoming"));
                 line(sb, s("Собеседник", "Other party"), o.optString("peer_name"));
                 line(sb, s("Телефон", "Phone"), o.optString("peer_phone"));
                 line(sb, s("Страна", "Country"), o.optString("country") + " (" + o.optString("country_rule") + ")");

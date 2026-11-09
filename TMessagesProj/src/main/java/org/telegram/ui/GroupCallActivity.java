@@ -4856,6 +4856,7 @@ public class GroupCallActivity extends BottomSheet implements NotificationCenter
         actionBarShadow.setAlpha(0.0f);
         ThemeBind.backgroundColor(actionBarShadow, Theme.key_dialogShadowLine);
         containerView.addView(actionBarShadow, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 1));
+        containerView.addView(new org.recgram.rec.RecChip(context), LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 60, 0, 0)); // RecGram
 
         for (int a = 0; a < 2; a++) {
             undoView[a] = new UndoView(context) {

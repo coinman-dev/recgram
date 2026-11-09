@@ -49,6 +49,7 @@ public final class CallRecordController {
     private static String peerPhone;
     private static boolean outgoing;
     private static boolean peerNotified;
+    private static boolean group;
     private static String fromName;
     private static String toName;
 
@@ -57,11 +58,11 @@ public final class CallRecordController {
 
     /** Из VoIPService.dispatchStateChanged. */
     public static void onCallState(VoIPService service, int state) {
-        if (service == null || service.groupCall != null) {
-            return; // пока только личные звонки
+        if (service == null) {
+            return;
         }
-        if (state == VoIPService.STATE_WAITING || state == VoIPService.STATE_RINGING
-                || state == VoIPService.STATE_WAITING_INCOMING) {
+        if (service.groupCall == null && (state == VoIPService.STATE_WAITING || state == VoIPService.STATE_RINGING
+                || state == VoIPService.STATE_WAITING_INCOMING)) {
             notifyBeforeAnswer(service, state == VoIPService.STATE_WAITING_INCOMING);
         } else if (state == VoIPService.STATE_ESTABLISHED && !established) {
             established = true;
@@ -100,7 +101,7 @@ public final class CallRecordController {
     /** Можно ли начать запись прямо сейчас (страна, настройки, идёт личный звонок). */
     public static boolean canStart() {
         VoIPService s = VoIPService.getSharedInstance();
-        return recorder == null && established && s != null && s.groupCall == null
+        return recorder == null && established && s != null
                 && RecordingRules.isRecordingAllowed() && RecGramConfig.isRecordAudio()
                 && RecGramConfig.getRecordingMode() != RecGramConfig.RECORD_OFF;
     }
@@ -117,16 +118,29 @@ public final class CallRecordController {
         if (recorder != null || service == null) {
             return;
         }
-        TLRPC.User user = service.getUser();
         account = service.getAccount();
-        peerId = user != null ? user.id : 0;
-        peerName = user != null ? UserObject.getUserName(user) : "";
-        peerPhone = user != null && user.phone != null ? user.phone : "";
-        outgoing = service.isOutgoing();
         TLRPC.User me = UserConfig.getInstance(account).getCurrentUser();
         String myName = me != null ? UserObject.getUserName(me) : s("Я", "Me");
-        String from = outgoing ? myName : peerName;
-        String to = outgoing ? peerName : myName;
+        String from, to;
+        group = service.groupCall != null;
+        if (group) {
+            // Групповой звонок или трансляция: «собеседник» — чат
+            TLRPC.Chat chat = service.getChat();
+            peerId = chat != null ? -chat.id : 0;
+            peerName = chat != null ? "👥 " + chat.title : s("👥 Групповой звонок", "👥 Group call");
+            peerPhone = "";
+            outgoing = true;
+            from = myName;
+            to = peerName;
+        } else {
+            TLRPC.User user = service.getUser();
+            peerId = user != null ? user.id : 0;
+            peerName = user != null ? UserObject.getUserName(user) : "";
+            peerPhone = user != null && user.phone != null ? user.phone : "";
+            outgoing = service.isOutgoing();
+            from = outgoing ? myName : peerName;
+            to = outgoing ? peerName : myName;
+        }
         fromName = from;
         toName = to;
         String stamp = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(new Date());
@@ -140,10 +154,21 @@ public final class CallRecordController {
         peerNotified = notifiedThisCall; // предупреждение могло уйти ещё до ответа
         showNotification();
         if (RecGramConfig.isNotifyPeer() && peerId != 0 && !notifiedThisCall) {
-            notifiedThisCall = true;
-            peerNotified = true;
-            SendMessagesHelper.getInstance(account).sendMessage(SendMessagesHelper.SendMessageParams.of(
-                    s("🔴 Этот звонок записывается (RecGram)", "🔴 This call is being recorded (RecGram)"), peerId));
+            if (group) {
+                // В группу пишем, только если там можно отправлять сообщения
+                TLRPC.Chat chat = service.getChat();
+                if (chat != null && org.telegram.messenger.ChatObject.canSendPlain(chat)) {
+                    notifiedThisCall = true;
+                    peerNotified = true;
+                    SendMessagesHelper.getInstance(account).sendMessage(SendMessagesHelper.SendMessageParams.of(
+                            s("🔴 Этот голосовой чат записывается (RecGram)", "🔴 This voice chat is being recorded (RecGram)"), peerId));
+                }
+            } else {
+                notifiedThisCall = true;
+                peerNotified = true;
+                SendMessagesHelper.getInstance(account).sendMessage(SendMessagesHelper.SendMessageParams.of(
+                        s("🔴 Этот звонок записывается (RecGram)", "🔴 This call is being recorded (RecGram)"), peerId));
+            }
         }
     }
 
@@ -191,7 +216,7 @@ public final class CallRecordController {
         t.put("COMMENT", s("Запись звонка Telegram, сделанная RecGram", "Telegram call recorded with RecGram"));
         t.put("RECGRAM_FROM", from);
         t.put("RECGRAM_TO", to);
-        t.put("RECGRAM_DIRECTION", out ? "outgoing" : "incoming");
+        t.put("RECGRAM_DIRECTION", group ? "group" : out ? "outgoing" : "incoming");
         t.put("RECGRAM_PEER_ID", String.valueOf(id));
         t.put("RECGRAM_PEER_PHONE", phone);
         t.put("RECGRAM_STARTED", iso);
@@ -232,7 +257,7 @@ public final class CallRecordController {
             o.put("peer_id", id);
             o.put("peer_name", name);
             o.put("peer_phone", phone);
-            o.put("direction", out ? "outgoing" : "incoming");
+            o.put("direction", group ? "group" : out ? "outgoing" : "incoming");
             RecordingRules.Country c = RecordingRules.selected();
             o.put("country", c != null ? c.id : "");
             o.put("country_rule", c != null ? c.self : "");
