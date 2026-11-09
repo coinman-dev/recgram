@@ -1476,6 +1476,19 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
 		remoteSink[screencast ? CAPTURE_DEVICE_SCREEN : CAPTURE_DEVICE_CAMERA].setTarget(remote);
 	}
 
+	// RecGram: получатели кадров для видеозаписи личного звонка (не мешают интерфейсу звонка)
+	public void recgramVideoTaps(VideoSink remote, VideoSink local, boolean add) {
+		ProxyVideoSink r = remoteSink[CAPTURE_DEVICE_CAMERA];
+		ProxyVideoSink l = localSink[CAPTURE_DEVICE_CAMERA];
+		if (add) {
+			if (r != null && remote != null) r.addExtra(remote);
+			if (l != null && local != null) l.addExtra(local);
+		} else {
+			if (r != null && remote != null) r.removeExtra(remote);
+			if (l != null && local != null) l.removeExtra(local);
+		}
+	}
+
 	public ProxyVideoSink addRemoteSink(TLRPC.GroupCallParticipant participant, boolean screencast, VideoSink remote, VideoSink background) {
 		if (tgVoip[CAPTURE_DEVICE_CAMERA] == null) {
 			return null;

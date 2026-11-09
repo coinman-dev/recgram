@@ -30,22 +30,31 @@ final class RecordingStore {
     }
 
     /** Копирует файл в общую папку. Возвращает путь для показа пользователю или null при ошибке. */
+    static String videoDir() {
+        return Environment.DIRECTORY_MOVIES + "/" + SUBDIR;
+    }
+
     static String publish(File src, String title) {
+        final boolean video = src.getName().endsWith(".mp4");
+        final String dirRel = video ? videoDir() : relativeDir();
         try {
             if (Build.VERSION.SDK_INT >= 29) {
                 ContentResolver cr = ApplicationLoader.applicationContext.getContentResolver();
                 ContentValues v = new ContentValues();
                 v.put(MediaStore.MediaColumns.DISPLAY_NAME, src.getName());
-                v.put(MediaStore.MediaColumns.MIME_TYPE, CallRecorder.mimeType());
-                v.put(MediaStore.MediaColumns.RELATIVE_PATH, relativeDir());
+                v.put(MediaStore.MediaColumns.MIME_TYPE, video ? "video/mp4" : CallRecorder.mimeType());
+                v.put(MediaStore.MediaColumns.RELATIVE_PATH, dirRel);
                 v.put(MediaStore.MediaColumns.TITLE, title);
-                v.put(MediaStore.Audio.Media.ARTIST, "RecGram");
-                v.put(MediaStore.Audio.Media.ALBUM, "RecGram");
+                if (!video) {
+                    v.put(MediaStore.Audio.Media.ARTIST, "RecGram");
+                    v.put(MediaStore.Audio.Media.ALBUM, "RecGram");
+                }
                 v.put(MediaStore.MediaColumns.IS_PENDING, 1);
-                if (Build.VERSION.SDK_INT >= 31) {
+                if (Build.VERSION.SDK_INT >= 31 && !video) {
                     v.put(MediaStore.Audio.Media.IS_RECORDING, 1);
                 }
-                Uri uri = cr.insert(MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), v);
+                Uri uri = cr.insert(video ? MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                        : MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), v);
                 if (uri == null) {
                     return null;
                 }
@@ -56,7 +65,7 @@ final class RecordingStore {
                 done.put(MediaStore.MediaColumns.IS_PENDING, 0);
                 cr.update(uri, done, null, null);
             } else {
-                File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), SUBDIR);
+                File dir = new File(Environment.getExternalStoragePublicDirectory(video ? Environment.DIRECTORY_MOVIES : Environment.DIRECTORY_MUSIC), SUBDIR);
                 if (!dir.exists() && !dir.mkdirs()) {
                     return null;
                 }
@@ -66,7 +75,7 @@ final class RecordingStore {
                 }
                 android.media.MediaScannerConnection.scanFile(ApplicationLoader.applicationContext, new String[]{dst.getAbsolutePath()}, null, null);
             }
-            return relativeDir() + "/" + src.getName();
+            return dirRel + "/" + src.getName();
         } catch (Throwable e) {
             FileLog.e(e);
             return null;

@@ -61,19 +61,18 @@ public class RecordingsActivity extends UniversalFragment {
         recs.clear();
         ContentResolver cr = getParentActivity() != null ? getParentActivity().getContentResolver()
                 : org.telegram.messenger.ApplicationLoader.applicationContext.getContentResolver();
-        Uri collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-        String[] proj = {MediaStore.Audio.Media._ID, MediaStore.Audio.Media.DISPLAY_NAME, MediaStore.Audio.Media.DURATION,
-                MediaStore.Audio.Media.DATE_ADDED, MediaStore.Audio.Media.SIZE, MediaStore.Audio.Media.MIME_TYPE};
-        String where;
-        String[] args;
-        if (Build.VERSION.SDK_INT >= 29) {
-            where = MediaStore.Audio.Media.RELATIVE_PATH + " LIKE ?";
-            args = new String[]{"%/RecGram/%"};
-        } else {
-            where = MediaStore.Audio.Media.DATA + " LIKE ?";
-            args = new String[]{"%/RecGram/%"};
-        }
-        try (Cursor c = cr.query(collection, proj, where, args, MediaStore.Audio.Media.DATE_ADDED + " DESC")) {
+        // Аудио — Recordings/RecGram, видео — Movies/RecGram
+        queryInto(cr, MediaStore.Audio.Media.EXTERNAL_CONTENT_URI);
+        queryInto(cr, MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
+        java.util.Collections.sort(recs, (a, b) -> Long.compare(b.dateSec, a.dateSec));
+    }
+
+    private void queryInto(ContentResolver cr, Uri collection) {
+        String[] proj = {MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.DURATION,
+                MediaStore.MediaColumns.DATE_ADDED, MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.MIME_TYPE};
+        String where = (Build.VERSION.SDK_INT >= 29 ? MediaStore.MediaColumns.RELATIVE_PATH : MediaStore.MediaColumns.DATA) + " LIKE ?";
+        String[] args = {"%/RecGram/%"};
+        try (Cursor c = cr.query(collection, proj, where, args, null)) {
             if (c == null) {
                 return;
             }
@@ -139,10 +138,10 @@ public class RecordingsActivity extends UniversalFragment {
                     "No recordings yet. They appear in Recordings/RecGram after a recorded call.")));
             return;
         }
-        items.add(UItem.asHeader(s("Recordings/RecGram — ", "Recordings/RecGram — ") + recs.size()));
+        items.add(UItem.asHeader(s("Записей: ", "Recordings: ") + recs.size()));
         for (int i = 0; i < recs.size(); i++) {
             Rec r = recs.get(i);
-            items.add(UItem.asButton(ID_BASE + i, rowTitle(r), duration(r.durationMs)));
+            items.add(UItem.asButton(ID_BASE + i, (r.name != null && r.name.endsWith(".mp4") ? "🎥 " : "") + rowTitle(r), duration(r.durationMs)));
         }
         items.add(UItem.asShadow(s("Нажмите на запись, чтобы прослушать, поделиться, посмотреть данные звонка или удалить.",
                 "Tap a recording to play, share, view call data or delete it.")));

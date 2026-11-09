@@ -70,7 +70,7 @@ public class RecordingSettingsActivity extends UniversalFragment {
 
         items.add(UItem.asHeader(s("Что записывать", "What to record")));
         items.add(UItem.asCheck(ID_AUDIO, s("Звук", "Audio")).setChecked(RecGramConfig.isRecordAudio()).setEnabled(allowed));
-        items.add(UItem.asCheck(ID_VIDEO, s("Видео (в разработке)", "Video (in development)")).setChecked(false).setEnabled(false));
+        items.add(UItem.asCheck(ID_VIDEO, s("Видео в видеозвонках", "Video in video calls")).setChecked(RecGramConfig.isRecordVideo()).setEnabled(allowed));
         items.add(UItem.asCheck(ID_LEVEL, s("Выравнивать громкость голосов", "Even out voice volume")).setChecked(RecGramConfig.isAutoLevel()).setEnabled(allowed));
         items.add(UItem.asCheck(ID_NOTIFY, s("Сообщать собеседнику о записи", "Tell the other party about recording")).setChecked(RecGramConfig.isNotifyPeer()).setEnabled(allowed));
         items.add(UItem.asShadow(s("В начале записи собеседнику уйдёт сообщение «Этот звонок записывается». Пока записываются только личные звонки. Запись: Opus, моно, 64 кбит/с, папка Recordings/RecGram, рядом файл .json с данными звонка.",
@@ -98,6 +98,10 @@ public class RecordingSettingsActivity extends UniversalFragment {
             case ID_AUDIO:
                 if (!allowed) return;
                 RecGramConfig.setRecordAudio(!RecGramConfig.isRecordAudio());
+                break;
+            case ID_VIDEO:
+                if (!allowed) return;
+                RecGramConfig.setRecordVideo(!RecGramConfig.isRecordVideo());
                 break;
             case ID_LEVEL:
                 if (!allowed) return;

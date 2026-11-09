@@ -50,6 +50,8 @@ public final class CallRecordController {
     private static boolean outgoing;
     private static boolean peerNotified;
     private static boolean group;
+    private static VideoTap videoTap;
+    private static MuxerHub videoHub;
     private static String fromName;
     private static String toName;
 
@@ -145,8 +147,25 @@ public final class CallRecordController {
         toName = to;
         String stamp = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(new Date());
         String base = safe(from) + "→" + safe(to) + "_" + stamp;
-        File file = new File(recordingsDir(), base + CallRecorder.extension());
-        recorder = CallRecorder.start(file);
+        boolean video = !group && RecGramConfig.isRecordVideo() && service.videoCall;
+        File file = new File(recordingsDir(), base + (video ? ".mp4" : CallRecorder.extension()));
+        videoHub = null;
+        videoTap = null;
+        if (video) {
+            try {
+                videoHub = new MuxerHub(file, android.media.MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4, 2);
+            } catch (Throwable e) {
+                FileLog.e(e);
+                video = false;
+                file = new File(recordingsDir(), base + CallRecorder.extension());
+            }
+        }
+        long t0 = System.nanoTime();
+        recorder = CallRecorder.start(file, videoHub);
+        if (recorder != null && videoHub != null) {
+            videoTap = VideoTap.start(videoHub, t0);
+            service.recgramVideoTaps(videoTap.remoteSink, videoTap.localSink, true);
+        }
         if (recorder == null) {
             return;
         }
@@ -174,6 +193,16 @@ public final class CallRecordController {
 
     public static synchronized void stop() {
         final CallRecorder r = recorder;
+        final VideoTap vt = videoTap;
+        final MuxerHub vh = videoHub;
+        videoTap = null;
+        videoHub = null;
+        if (vt != null) {
+            VoIPService s = VoIPService.getSharedInstance();
+            if (s != null) {
+                s.recgramVideoTaps(vt.remoteSink, vt.localSink, false);
+            }
+        }
         if (r == null) {
             return;
         }
@@ -186,6 +215,12 @@ public final class CallRecordController {
         final String fromN = fromName, toN = toName;
         Utilities.globalQueue.postRunnable(() -> {
             r.stop();
+            if (vt != null) {
+                vt.stop();
+            }
+            if (vh != null) {
+                vh.awaitReleased(5000);
+            }
             String title = (out ? s("Звонок: ", "Call to ") : s("Звонок от ", "Call from ")) + name;
             boolean tagged = false;
             if (!r.isFailed() && r.getFile().getName().endsWith(".opus")) {
@@ -264,7 +299,7 @@ public final class CallRecordController {
             o.put("peer_notified", notified);
             o.put("auto_level", RecGramConfig.isAutoLevel());
             o.put("channels", "mono: me + peer");
-            o.put("codec", CallRecorder.useOpus() ? "opus/ogg mono 64k" : "aac/mp4 mono 64k");
+            o.put("codec", f.getName().endsWith(".mp4") ? "h264 720x1280 + aac mono 64k" : CallRecorder.useOpus() ? "opus/ogg mono 64k" : "aac/mp4 mono 64k");
             o.put("failed", r.isFailed());
             o.put("sha256", f.exists() ? sha256(f) : "");
             o.put("saved_to", published != null ? published : f.getAbsolutePath());

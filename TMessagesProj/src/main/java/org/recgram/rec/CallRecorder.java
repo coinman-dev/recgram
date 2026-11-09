@@ -51,6 +51,8 @@ public final class CallRecorder {
     private static volatile CallRecorder active;
 
     private final File file;
+    /** Общий сборщик файла при видеозаписи; null — аудио пишется в свой файл. */
+    private final MuxerHub videoHub;
     private final ShortFifo micFifo = new ShortFifo(RATE * 2);
     private final boolean autoLevel = org.recgram.RecGramConfig.isAutoLevel();
     private final AutoLevel micLevel = new AutoLevel();
@@ -61,17 +63,23 @@ public final class CallRecorder {
     private volatile boolean failed;
     private long frames;
 
-    private CallRecorder(File file) {
+    private CallRecorder(File file, MuxerHub videoHub) {
         this.file = file;
+        this.videoHub = videoHub;
         thread = new Thread(this::encodeLoop, "RecGramCallRecorder");
     }
 
     /** Начать запись в файл. Возвращает null, если запись уже идёт. */
     static synchronized CallRecorder start(File file) {
+        return start(file, null);
+    }
+
+    /** С videoHub звук пишется AAC в общий .mp4 вместе с видео. */
+    static synchronized CallRecorder start(File file, MuxerHub videoHub) {
         if (active != null) {
             return null;
         }
-        CallRecorder r = new CallRecorder(file);
+        CallRecorder r = new CallRecorder(file, videoHub);
         r.thread.start();
         active = r;
         return r;
@@ -197,11 +205,11 @@ public final class CallRecorder {
 
     private void encodeLoop() {
         MediaCodec codec = null;
-        MediaMuxer muxer = null;
+        MuxerHub hub = videoHub;
         int track = -1;
-        boolean muxerStarted = false;
+        boolean trackAdded = false;
         try {
-            final boolean opus = useOpus();
+            final boolean opus = videoHub == null && useOpus();
             final String mime = opus ? MediaFormat.MIMETYPE_AUDIO_OPUS : MediaFormat.MIMETYPE_AUDIO_AAC;
             MediaFormat format = MediaFormat.createAudioFormat(mime, RATE, 1);
             if (!opus) {
@@ -212,7 +220,9 @@ public final class CallRecorder {
             codec = MediaCodec.createEncoderByType(mime);
             codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
             codec.start();
-            muxer = new MediaMuxer(file.getAbsolutePath(), opus ? MediaMuxer.OutputFormat.MUXER_OUTPUT_OGG : MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            if (hub == null) {
+                hub = new MuxerHub(file, opus ? MediaMuxer.OutputFormat.MUXER_OUTPUT_OGG : MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4, 1);
+            }
             MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
             short[] pending = null;
             int pendingOff = 0;
@@ -252,18 +262,15 @@ public final class CallRecorder {
                 }
                 int out = codec.dequeueOutputBuffer(info, eosSent ? 10000 : 0);
                 if (out == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                    track = muxer.addTrack(codec.getOutputFormat());
-                    muxer.start();
-                    muxerStarted = true;
+                    track = hub.addTrack(codec.getOutputFormat());
+                    trackAdded = true;
                 } else if (out >= 0) {
                     ByteBuffer ob = codec.getOutputBuffer(out);
                     if ((info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
                         info.size = 0;
                     }
-                    if (info.size > 0 && muxerStarted) {
-                        ob.position(info.offset);
-                        ob.limit(info.offset + info.size);
-                        muxer.writeSampleData(track, ob, info);
+                    if (info.size > 0 && trackAdded) {
+                        hub.write(track, ob, info);
                     }
                     codec.releaseOutputBuffer(out, false);
                     if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
@@ -282,16 +289,19 @@ public final class CallRecorder {
                 }
             } catch (Throwable ignore) {
             }
-            try {
-                if (muxer != null) {
-                    if (muxerStarted) {
-                        muxer.stop();
-                    }
-                    muxer.release();
+            if (hub != null) {
+                if (!trackAdded) {
+                    failed = true;
+                    hub.abandonTrack();
+                } else {
+                    hub.finish();
                 }
-            } catch (Throwable e) {
-                failed = true;
-                FileLog.e(e);
+                if (videoHub == null) {
+                    hub.awaitReleased(3000);
+                    if (!hub.isStarted()) {
+                        failed = true;
+                    }
+                }
             }
             synchronized (CallRecorder.class) {
                 if (active == this) {
