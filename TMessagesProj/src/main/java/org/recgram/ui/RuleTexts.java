@@ -37,7 +37,7 @@ final class RuleTexts {
     static String status(RecordingRules.Color color) {
         switch (color) {
             case GREEN: return s("можно", "allowed");
-            case RED: return s("с предупреждением", "with notice");
+            case RED: return s("с уведомлением", "with notice");
             case FORBIDDEN: return s("нельзя", "not allowed");
             default: return s("риск", "risky");
         }
