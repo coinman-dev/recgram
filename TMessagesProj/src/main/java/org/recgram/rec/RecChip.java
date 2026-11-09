@@ -44,7 +44,11 @@ public class RecChip extends TextView {
 
     private void refresh() {
         removeCallbacks(tick);
-        if (CallRecordController.isRecording()) {
+        if (CallRecordController.isRecording() && CallRecordController.isNoticePlaying()) {
+            setText(s("🔊  REC  Предупреждение…", "🔊  REC  Notice…"));
+            bg.setColor(0xE6FF3B30);
+            setVisibility(View.VISIBLE);
+        } else if (CallRecordController.isRecording()) {
             long sec = CallRecordController.elapsedMs() / 1000;
             setText(String.format(Locale.US, "●  REC  %02d:%02d", sec / 60, sec % 60));
             bg.setColor(0xE6FF3B30);

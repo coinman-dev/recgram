@@ -128,6 +128,8 @@ public final class CallRecorder {
         if (r != null) {
             r.playout(toMono48k(buf, bytes, sampleRate, channels));
         }
+        // После записи: владелец слышит предупреждение вместо собеседника (в файл оно попадает один раз — из микрофона)
+        VoiceNotice.processPlayout(buf, bytes, sampleRate, channels);
     }
 
     private void mic(short[] m) {

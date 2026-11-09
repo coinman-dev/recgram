@@ -31,6 +31,7 @@ public final class VoiceNotice {
     private static volatile short[] playing;
     private static volatile int playRate;
     private static double playPos;
+    private static double localPos;
     private static Runnable onDone;
 
     private VoiceNotice() {
@@ -41,7 +42,7 @@ public final class VoiceNotice {
     }
 
     private static String text() {
-        return s("Внимание. Этот разговор записывается.", "Attention. This call is being recorded.");
+        return s("Внимание. Этот разговор записывается. Говорите после сигнала.", "Attention. This call is being recorded. Please speak after the tone.");
     }
 
     /** Заранее синтезировать фразу (например, при включении настройки). */
@@ -61,7 +62,7 @@ public final class VoiceNotice {
         }
         preparing = true;
         AndroidUtilities.runOnUIThread(() -> {
-            final File out = new File(ApplicationLoader.applicationContext.getCacheDir(), "recgram_notice_" + lang + ".wav");
+            final File out = new File(ApplicationLoader.applicationContext.getCacheDir(), "recgram_notice2_" + lang + ".wav");
             final TextToSpeech[] holder = new TextToSpeech[1];
             holder[0] = new TextToSpeech(ApplicationLoader.applicationContext, status -> {
                 TextToSpeech tts = holder[0];
@@ -91,6 +92,16 @@ public final class VoiceNotice {
     private static synchronized void finishPrepare(short[] data, int rate, String lang, TextToSpeech tts, Runnable ready) {
         preparing = false;
         if (data != null && data.length > 0 && rate > 0) {
+            short[] beep = beep(rate);
+            short[] gap = new short[rate / 5]; // 0,2 с тишины между сигналом и речью
+            short[] all = new short[beep.length * 2 + gap.length * 2 + data.length];
+            int o = 0;
+            System.arraycopy(beep, 0, all, o, beep.length); o += beep.length;
+            o += gap.length;
+            System.arraycopy(data, 0, all, o, data.length); o += data.length;
+            o += gap.length;
+            System.arraycopy(beep, 0, all, o, beep.length);
+            data = all;
             pcm = data;
             pcmRate = rate;
             pcmLang = lang;
@@ -117,6 +128,7 @@ public final class VoiceNotice {
                 onDone = done;
                 playRate = pcmRate;
                 playPos = 0;
+                localPos = 0;
                 playing = data;
             }
             // Страховка: если микрофонный поток не идёт, всё равно продолжить
@@ -177,6 +189,46 @@ public final class VoiceNotice {
         }
         if (end) {
             finishPlay();
+        }
+    }
+
+    /** Сигнал 1 с, 1000 Гц, с плавными краями. */
+    private static short[] beep(int rate) {
+        short[] b = new short[rate];
+        int fade = rate / 50;
+        for (int i = 0; i < rate; i++) {
+            double env = Math.min(1.0, Math.min(i, rate - 1 - i) / (double) fade);
+            b[i] = (short) (Math.sin(2 * Math.PI * 1000 * i / rate) * 9000 * env);
+        }
+        return b;
+    }
+
+    /**
+     * Из потока воспроизведения WebRTC (после того, как запись взяла звук собеседника):
+     * пока идёт предупреждение, владелец тоже слышит его вместо собеседника.
+     */
+    static void processPlayout(ByteBuffer buf, int bytes, int sampleRate, int channels) {
+        short[] data = playing;
+        if (data == null || sampleRate <= 0) {
+            return;
+        }
+        if (channels < 1) channels = 1;
+        int frames = bytes / 2 / channels;
+        double step = (double) playRate / sampleRate;
+        synchronized (VoiceNotice.class) {
+            for (int i = 0; i < frames; i++) {
+                int idx = (int) localPos;
+                short v = 0;
+                if (idx < data.length) {
+                    v = data[idx];
+                    localPos += step;
+                }
+                for (int c = 0; c < channels; c++) {
+                    int o = (i * channels + c) * 2;
+                    buf.put(o, (byte) (v & 0xff));
+                    buf.put(o + 1, (byte) ((v >> 8) & 0xff));
+                }
+            }
         }
     }
 

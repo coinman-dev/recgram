@@ -120,7 +120,7 @@ public final class CallRecordController {
     /** Можно ли начать запись прямо сейчас (страна, настройки, идёт личный звонок). */
     public static boolean canStart() {
         VoIPService s = VoIPService.getSharedInstance();
-        return recorder == null && !noticePending && established && s != null
+        return recorder == null && established && s != null
                 && RecordingRules.isRecordingAllowed() && RecGramConfig.isRecordAudio()
                 && RecGramConfig.getRecordingMode() != RecGramConfig.RECORD_OFF;
     }
@@ -136,14 +136,10 @@ public final class CallRecordController {
             start(service);
             return;
         }
+        // Запись начинается сразу, чтобы предупреждение попало в файл
+        start(service);
         noticePending = true;
-        VoiceNotice.play(() -> {
-            noticePending = false;
-            VoIPService s = VoIPService.getSharedInstance();
-            if (established && s == service) {
-                start(service);
-            }
-        });
+        VoiceNotice.play(() -> noticePending = false);
     }
 
     public static boolean isNoticePlaying() {

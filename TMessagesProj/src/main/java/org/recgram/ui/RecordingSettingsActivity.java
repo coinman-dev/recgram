@@ -81,9 +81,9 @@ public class RecordingSettingsActivity extends UniversalFragment {
         items.add(UItem.asCheck(ID_VOICE, s("Голосовое предупреждение", "Voice notice"))
                 .setChecked(RecGramConfig.isVoiceNotice()).setEnabled(voiceAllowed));
         items.add(UItem.asCheck(ID_NOTIFY, s("Сообщать собеседнику о записи", "Tell the other party about recording")).setChecked(RecGramConfig.isNotifyPeer()).setEnabled(allowed));
-        items.add(UItem.asShadow(s("Голосовое предупреждение: в начале звонка собеседник слышит «Внимание. Этот разговор записывается», запись начинается после него. "
+        items.add(UItem.asShadow(s("Голосовое предупреждение: в начале звонка вы и собеседник слышите сигнал, фразу «Внимание. Этот разговор записывается. Говорите после сигнала» и второй сигнал. Предупреждение тоже попадает в запись. "
                         + (red ? "В вашей стране запись без согласия запрещена, поэтому запись возможна только с голосовым предупреждением." : ""),
-                "Voice notice: at the start of the call the other party hears \"Attention. This call is being recorded\", recording starts after it. "
+                "Voice notice: at the start of the call both of you hear a tone, \"Attention. This call is being recorded. Please speak after the tone\" and a second tone. The notice is included in the recording. "
                         + (red ? "Recording without consent is prohibited in your country, so recording is possible only with the voice notice." : ""))));
         items.add(UItem.asShadow(s("Звонки записываются в Opus, моно, 64 кбит/с — папка Recordings/RecGram, данные звонка внутри файла. Видеозвонки — в MP4, папка Movies/RecGram. Сообщение о записи уходит собеседнику до ответа на звонок.",
                 "Calls are recorded as Opus, mono, 64 kbps in Recordings/RecGram, call data inside the file. Video calls are recorded as MP4 in Movies/RecGram. The recording notice is sent to the other party before the call is answered.")));
