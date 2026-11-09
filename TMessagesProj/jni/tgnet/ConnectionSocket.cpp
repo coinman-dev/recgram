@@ -47,8 +47,12 @@ void ConnectionSocket::setDpiDesync(int32_t mode, bool direct) {
 // RecGram: отправка первого пакета с разрезом на позиции splitPos. Данные для сервера не меняются:
 // разрез на уровне TCP, «обратный порядок» — первая часть уходит с TTL=1, умирает на первом узле
 // и досылается ядром позже; OOB — к первой части добавляется срочный байт, который сервер отбрасывает.
-ssize_t ConnectionSocket::dpiSend(const uint8_t *buf, size_t len, size_t splitPos) {
+ssize_t ConnectionSocket::dpiSend(const uint8_t *buf, size_t len, size_t splitPos, bool allowOob) {
     int32_t mode = recgramDpiMode;
+    // Серверы Telegram не отбрасывают срочный байт — для прямых соединений вместо OOB обычный разрез
+    if (mode == 3 && !allowOob) {
+        mode = 1;
+    }
     if (mode <= 0 || splitPos == 0 || splitPos >= len) {
         return send(socketFd, buf, len, 0);
     }
@@ -592,7 +596,7 @@ void ConnectionSocket::onEvent(uint32_t events) {
                                 sniSplit = (size_t) (found - tempBuffer->bytes) + std::max<size_t>(1, currentSecretDomain.size() / 2);
                             }
                         }
-                        if (dpiSend(tempBuffer->bytes, size, sniSplit) < 0) {
+                        if (dpiSend(tempBuffer->bytes, size, sniSplit, true) < 0) {
                             if (LOGS_ENABLED) DEBUG_E("connection(%p) send failed", this);
                             closeSocket(1, -1);
                             return;
@@ -708,7 +712,7 @@ void ConnectionSocket::onEvent(uint32_t events) {
                             firstSplit = remaining > 2 ? 2 : 0;
                         }
                         dpiFirstDataSent = true;
-                        if ((sentLength = firstSplit ? dpiSend(buffer->bytes(), remaining, firstSplit) : send(socketFd, buffer->bytes(), remaining, 0)) < 0) {
+                        if ((sentLength = firstSplit ? dpiSend(buffer->bytes(), remaining, firstSplit, false) : send(socketFd, buffer->bytes(), remaining, 0)) < 0) {
                             if (LOGS_ENABLED) DEBUG_D("connection(%p) send failed", this);
                             closeSocket(1, -1);
                             return;

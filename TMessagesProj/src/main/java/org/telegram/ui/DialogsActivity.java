@@ -3434,7 +3434,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             } else {
                 statusDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(null, dp(26));
                 statusDrawable.center = true;
-                logoDrawable = context.getResources().getDrawable(R.drawable.telegram_logo_2).mutate();
+                logoDrawable = new org.recgram.ui.Wordmark(); // RecGram: надпись RecGram вместо логотипа Telegram
                 logoDrawable.setBounds(0, dp(2), logoDrawable.getIntrinsicWidth(), dp(2) + logoDrawable.getIntrinsicHeight());
                 // a new drawable (also when the view is recreated after a theme switch made elsewhere): remember its tint, the
                 // theme hook only recolors when the color differs from the last one applied

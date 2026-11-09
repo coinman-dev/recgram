@@ -57,7 +57,7 @@ protected:
 
 private:
     bool dpiFirstDataSent = false; // RecGram
-    ssize_t dpiSend(const uint8_t *buf, size_t len, size_t splitPos); // RecGram
+    ssize_t dpiSend(const uint8_t *buf, size_t len, size_t splitPos, bool allowOob); // RecGram
     ByteStream *outgoingByteStream = nullptr;
     struct epoll_event eventMask;
     struct sockaddr_in socketAddress;
