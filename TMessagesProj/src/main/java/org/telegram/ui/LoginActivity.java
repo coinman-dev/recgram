@@ -3234,7 +3234,9 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                     }
                 } else {
                     if (error.text != null) {
-                        if (error.text.contains("SESSION_PASSWORD_NEEDED")) {
+                        if (org.recgram.ApiKeys.handleAuthError(LoginActivity.this, error.text)) { // RecGram
+                            nextPressed = false;
+                        } else if (error.text.contains("SESSION_PASSWORD_NEEDED")) {
                             TL_account.getPassword req2 = new TL_account.getPassword();
                             ConnectionsManager.getInstance(currentAccount).sendRequest(req2, (response1, error1) -> AndroidUtilities.runOnUIThread(() -> {
                                 nextPressed = false;

@@ -76,6 +76,39 @@ public final class ApiKeys {
         RecGramConfig.setAllowSelfDestructSave(false);
     }
 
+    /**
+     * Ошибка ключа при входе (auth.sendCode). Telegram её молча игнорирует, поэтому показываем
+     * понятное сообщение с возможностью ввести ключ заново. Возвращает true, если ошибка обработана.
+     */
+    public static boolean handleAuthError(org.telegram.ui.ActionBar.BaseFragment fragment, String error) {
+        if (error == null || fragment == null || fragment.getParentActivity() == null) {
+            return false;
+        }
+        boolean invalid = error.contains("API_ID_INVALID");
+        boolean flood = error.contains("API_ID_PUBLISHED_FLOOD");
+        if (!invalid && !flood) {
+            return false;
+        }
+        org.telegram.ui.ActionBar.AlertDialog.Builder b = new org.telegram.ui.ActionBar.AlertDialog.Builder(fragment.getParentActivity());
+        b.setTitle(RLocale.s("Неверный API-ключ", "Invalid API key"));
+        if (invalid) {
+            b.setMessage(RLocale.s(
+                    "Telegram не принял ключ: api_id " + getCustomId() + ". Проверьте api_id и api_hash на my.telegram.org → API development tools и введите их заново.",
+                    "Telegram rejected the key: api_id " + getCustomId() + ". Check api_id and api_hash at my.telegram.org → API development tools and enter them again."));
+        } else {
+            b.setMessage(RLocale.s(
+                    "Telegram заблокировал этот ключ, потому что он опубликован. Создайте свой ключ на my.telegram.org и введите его.",
+                    "Telegram blocked this key because it was published. Create your own key at my.telegram.org and enter it."));
+        }
+        b.setPositiveButton(RLocale.s("Ввести заново", "Enter again"), (d, w) -> {
+            clearCustom();
+            restartApp();
+        });
+        b.setNegativeButton(RLocale.s("Отмена", "Cancel"), null);
+        fragment.showDialog(b.create());
+        return true;
+    }
+
     /** Перезапуск приложения, чтобы новый ключ подхватился сетевым модулем. */
     public static void restartApp() {
         Context ctx = ApplicationLoader.applicationContext;
