@@ -82,11 +82,16 @@ public class RecordingSettingsActivity extends UniversalFragment {
         boolean forced = RecordingRules.isVoiceNoticeForced();
         items.add(UItem.asCheck(ID_VOICE, s("Голосовое предупреждение", "Voice notice"))
                 .setChecked(RecGramConfig.isVoiceNotice() || forced).setEnabled(voiceAllowed && !forced));
-        items.add(UItem.asCheck(ID_NOTIFY, s("Сообщать собеседнику о записи", "Tell the other party about recording")).setChecked(RecGramConfig.isNotifyPeer()).setEnabled(allowed));
+        items.add(UItem.asCheck(ID_NOTIFY, s("Сообщать собеседнику о записи", "Tell the other party about recording"))
+                .setChecked(RecGramConfig.isNotifyPeer() || forced).setEnabled(allowed && !forced));
         items.add(UItem.asShadow(s("Голосовое предупреждение: в начале звонка вы и собеседник слышите сигнал, фразу «Внимание. Этот разговор записывается. Говорите после сигнала» и второй сигнал. Предупреждение тоже попадает в запись. "
-                        + (red ? "В вашей стране запись без согласия запрещена, поэтому предупреждение обязательно и отключить его нельзя." : ""),
+                        + (red ? "В вашей стране запись без согласия запрещена, поэтому оба предупреждения обязательны и отключить их нельзя."
+                        : c != null && c.color() == RecordingRules.Color.YELLOW ? "В вашей стране закон неоднозначен: предупреждения включены, но их можно выключить на свой риск."
+                        : c != null && c.color() == RecordingRules.Color.GREEN ? "В вашей стране запись разрешена, предупреждения по умолчанию выключены." : ""),
                 "Voice notice: at the start of the call both of you hear a tone, \"Attention. This call is being recorded. Please speak after the tone\" and a second tone. The notice is included in the recording. "
-                        + (red ? "Recording without consent is prohibited in your country, so the notice is mandatory and cannot be turned off." : ""))));
+                        + (red ? "Recording without consent is prohibited in your country, so both notices are mandatory and cannot be turned off."
+                        : c != null && c.color() == RecordingRules.Color.YELLOW ? "The law in your country is unclear: notices are on, but you can turn them off at your own risk."
+                        : c != null && c.color() == RecordingRules.Color.GREEN ? "Recording is allowed in your country, notices are off by default." : ""))));
         items.add(UItem.asShadow(s("Звонки записываются в Opus, моно — папка Recordings/RecGram, данные звонка внутри файла. Видеозвонки — в MP4, папка Movies/RecGram. Сообщение о записи уходит собеседнику до ответа на звонок.",
                 "Calls are recorded as Opus, mono in Recordings/RecGram, call data inside the file. Video calls are recorded as MP4 in Movies/RecGram. The recording notice is sent to the other party before the call is answered.")));
 
@@ -103,7 +108,7 @@ public class RecordingSettingsActivity extends UniversalFragment {
         if (RecGramConfig.isRecordVideo()) {
             boolean hevc = RecGramConfig.isVideoHevc();
             items.add(UItem.asHeader(s("Кодек видео", "Video codec")));
-            items.add(UItem.asRadio(ID_CODEC_HEVC, "H.265").setChecked(hevc).setEnabled(allowed));
+            items.add(UItem.asRadio(ID_CODEC_HEVC, "H.265" + s(" — по умолчанию", " — default")).setChecked(hevc).setEnabled(allowed));
             items.add(UItem.asRadio(ID_CODEC_AVC, "H.264").setChecked(!hevc).setEnabled(allowed));
             items.add(UItem.asShadow(s("H.265 даёт ~30% экономии размера, но старые плееры (программы) не умеют его проигрывать. Если телефон не умеет кодировать H.265, запись пойдёт в H.264.",
                     "H.265 saves ~30% of size, but older players cannot play it. If the phone cannot encode H.265, H.264 is used.")));
@@ -111,7 +116,8 @@ public class RecordingSettingsActivity extends UniversalFragment {
             int[] opts = hevc ? RecGramConfig.VIDEO_BITRATES_HEVC : RecGramConfig.VIDEO_BITRATES_AVC;
             int current = RecGramConfig.getVideoBitrate(hevc);
             for (int i = 0; i < opts.length; i++) {
-                items.add(UItem.asRadio(ID_BITRATE_BASE + i, String.format(java.util.Locale.US, "%.1f Mb/s", opts[i] / 1_000_000f))
+                items.add(UItem.asRadio(ID_BITRATE_BASE + i, String.format(java.util.Locale.US, "%.1f ", opts[i] / 1_000_000f) + s("Мбит/с", "Mbps")
+                                + (i == 0 ? s(" — по умолчанию", " — default") : ""))
                         .setChecked(opts[i] == current).setEnabled(allowed));
             }
             items.add(UItem.asShadow(s("Выше битрейт — лучше картинка, но больше файл.", "Higher bitrate — better picture, bigger file.")));
@@ -165,7 +171,7 @@ public class RecordingSettingsActivity extends UniversalFragment {
                 RecGramConfig.setAutoLevel(!RecGramConfig.isAutoLevel());
                 break;
             case ID_NOTIFY:
-                if (!allowed) return;
+                if (!allowed || RecordingRules.isVoiceNoticeForced()) return;
                 RecGramConfig.setNotifyPeer(!RecGramConfig.isNotifyPeer());
                 break;
             default:

@@ -34,7 +34,7 @@ public final class RecGramConfig {
     public static void setRecordAudio(boolean v) { put("record_audio", v); }
     public static boolean isRecordVideo() { return b("record_video", false); }
     public static void setRecordVideo(boolean v) { put("record_video", v); }
-    public static boolean isNotifyPeer() { return b("notify_peer", true); }
+    public static boolean isNotifyPeer() { return b("notify_peer", false); }
     public static void setNotifyPeer(boolean v) { put("notify_peer", v); }
     /** Кодек видеозаписи: H.265 (по умолчанию) или H.264. */
     public static boolean isVideoHevc() { return b("video_hevc", true); }
@@ -61,6 +61,9 @@ public final class RecGramConfig {
     /** Голосовое предупреждение собеседнику в начале звонка (в красных странах — обязательно). */
     public static boolean isVoiceNotice() { return b("voice_notice", false); }
     public static void setVoiceNotice(boolean v) { put("voice_notice", v); }
+    /** Предупреждения уже выставлены по цвету выбранной страны (один раз, при выборе страны). */
+    public static boolean isNoticeDefaultsApplied() { return b("notice_defaults_v2", false); }
+    public static void setNoticeDefaultsApplied() { put("notice_defaults_v2", true); }
     /** Выравнивать громкость голосов при записи. */
     public static boolean isAutoLevel() { return b("auto_level", true); }
     public static void setAutoLevel(boolean v) { put("auto_level", v); }

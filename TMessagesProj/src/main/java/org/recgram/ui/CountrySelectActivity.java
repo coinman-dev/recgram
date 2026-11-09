@@ -234,6 +234,7 @@ public class CountrySelectActivity extends UniversalFragment {
     private void apply(RecordingRules.Country c, boolean acceptRisk) {
         RecGramConfig.setCountryId(c.id);
         RecGramConfig.setAcceptedRiskCountryId(acceptRisk ? c.id : "");
+        RecordingRules.applyNoticeDefaults(c);
         if (!RecordingRules.isRecordingAllowed()) {
             RecGramConfig.setRecordingMode(RecGramConfig.RECORD_OFF);
         }

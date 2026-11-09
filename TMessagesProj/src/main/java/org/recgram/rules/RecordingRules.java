@@ -146,7 +146,21 @@ public final class RecordingRules {
         if (c == null && !TextUtils.isEmpty(id) && id.length() == 2) {
             c = unknown(id);
         }
+        if (c != null && !RecGramConfig.isNoticeDefaultsApplied()) {
+            applyNoticeDefaults(c); // страна выбрана до появления правил по цвету
+        }
         return c;
+    }
+
+    /**
+     * Предупреждения о записи (сообщение в чат и голосовое) по цвету страны:
+     * зелёная — выключены, жёлтая — включены (можно выключить), красная — включены всегда.
+     */
+    public static void applyNoticeDefaults(Country c) {
+        boolean on = c != null && c.color() != Color.GREEN;
+        RecGramConfig.setNotifyPeer(on);
+        RecGramConfig.setVoiceNotice(on);
+        RecGramConfig.setNoticeDefaultsApplied();
     }
 
     /** ISO-код страны по сети или SIM, например "RU". Пустая строка, если не удалось. */
@@ -196,11 +210,15 @@ public final class RecordingRules {
 
     /** Нужно ли голосовое предупреждение перед записью. */
     public static boolean voiceNoticeRequired() {
-        Country c = selected();
         return RecGramConfig.isVoiceNotice() || isVoiceNoticeForced();
     }
 
-    /** Страна требует голосового предупреждения — отключить его нельзя. */
+    /** Нужно ли сообщение собеседнику в чат о записи. */
+    public static boolean chatNoticeRequired() {
+        return RecGramConfig.isNotifyPeer() || isVoiceNoticeForced();
+    }
+
+    /** Красная страна: оба предупреждения обязательны, отключить нельзя. */
     public static boolean isVoiceNoticeForced() {
         Country c = selected();
         return c != null && c.color() == Color.RED;

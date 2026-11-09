@@ -86,7 +86,7 @@ public final class CallRecordController {
      * поэтому предупреждение отправляется отсюда.
      */
     public static void onIncomingRinging(int account, long userId) {
-        if (notifiedThisCall || userId == 0 || !RecGramConfig.isNotifyPeer()
+        if (notifiedThisCall || userId == 0 || !RecordingRules.chatNoticeRequired()
                 || RecGramConfig.getRecordingMode() != RecGramConfig.RECORD_AUTO
                 || !RecordingRules.isRecordingAllowed() || !RecGramConfig.isRecordAudio()) {
             return;
@@ -101,7 +101,7 @@ public final class CallRecordController {
      * Только для режима «все звонки»: в ручном режиме неизвестно, будет ли запись.
      */
     private static void notifyBeforeAnswer(VoIPService service, boolean incoming) {
-        if (notifiedThisCall || !RecGramConfig.isNotifyPeer()
+        if (notifiedThisCall || !RecordingRules.chatNoticeRequired()
                 || RecGramConfig.getRecordingMode() != RecGramConfig.RECORD_AUTO
                 || !RecordingRules.isRecordingAllowed() || !RecGramConfig.isRecordAudio()) {
             return;
@@ -210,7 +210,7 @@ public final class CallRecordController {
         startedAt = System.currentTimeMillis();
         peerNotified = notifiedThisCall; // предупреждение могло уйти ещё до ответа
         showNotification();
-        if (RecGramConfig.isNotifyPeer() && peerId != 0 && !notifiedThisCall) {
+        if (RecordingRules.chatNoticeRequired() && peerId != 0 && !notifiedThisCall) {
             if (group) {
                 // В группу пишем, только если там можно отправлять сообщения
                 TLRPC.Chat chat = service.getChat();
