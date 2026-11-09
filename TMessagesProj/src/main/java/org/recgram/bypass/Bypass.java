@@ -57,6 +57,29 @@ public final class Bypass {
         prefs().edit().putString("subscription_url", url == null ? "" : url.trim()).apply();
     }
 
+    // ------------------------------------------------------------------ первый запуск
+
+    /** Страны, где Telegram блокируют или сильно ограничивают: без обхода войти не получится. */
+    private static final java.util.Set<String> BLOCKING = new java.util.HashSet<>(java.util.Arrays.asList(
+            "RU", "IR", "CN", "TM", "VN", "KP"));
+
+    /** Страна по SIM-карте или сети; если не удалось — по языку системы. */
+    public static String countryIso() {
+        String iso = org.recgram.rules.RecordingRules.detectIso();
+        if (TextUtils.isEmpty(iso)) {
+            iso = java.util.Locale.getDefault().getCountry();
+        }
+        return iso == null ? "" : iso.toUpperCase(java.util.Locale.US);
+    }
+
+    public static boolean isBlockingCountry(String iso) {
+        return iso != null && BLOCKING.contains(iso);
+    }
+
+    /** Шаг «Подключение к Telegram» пройден (показывается один раз, после ввода API-ключа). */
+    public static boolean isSetupDone() { return prefs().getBoolean("setup_done", false); }
+    public static void setSetupDone() { prefs().edit().putBoolean("setup_done", true).commit(); }
+
     private static boolean applied;
 
     /** Передать режим в сетевой модуль. Вызывается при запуске сетевого модуля и при изменении настройки. */

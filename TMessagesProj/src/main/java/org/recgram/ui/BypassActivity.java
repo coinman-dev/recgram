@@ -25,8 +25,22 @@ import org.telegram.ui.ProxyListActivity;
 
 import java.util.ArrayList;
 
-/** Настройки → RecGram → Обход блокировок. */
+/**
+ * Настройки → RecGram → Обход блокировок. Тот же экран — шаг первого запуска «Подключение к Telegram»
+ * (после ввода API-ключа, до входа): пока нет связи с Telegram, дальше не пустит, если страна блокирует Telegram.
+ */
 public class BypassActivity extends UniversalFragment implements NotificationCenter.NotificationCenterDelegate {
+
+    private static final int ID_CONTINUE = 30;
+    private final boolean setup;
+
+    public BypassActivity() {
+        this(false);
+    }
+
+    public BypassActivity(boolean setup) {
+        this.setup = setup;
+    }
 
     private static final int ID_PROXY_LIST = 1, ID_IMPORT = 2, ID_SUBSCRIPTION = 3, ID_SUB_UPDATE = 4, ID_BEST = 5;
     private static final int ID_MODE_BASE = 10;
@@ -35,24 +49,64 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
     private boolean busy;          // идёт автоподбор
     private boolean checking;      // идёт «проверить все»
     private String status;         // итог действий с прокси (под блоком «Прокси»)
-    private String checkProgress;  // ход «проверить все» — в тексте кнопки
-    private String autoProgress;   // ход автоподбора — в тексте кнопки
+    private String checkProgress;  // ход «проверить все» — строкой на всю ширину под кнопкой
+    private String autoProgress;   // ход автоподбора — строкой на всю ширину под кнопкой
     private final StringBuilder autoLog = new StringBuilder(); // итоги по режимам — под кнопкой автоподбора
 
     @Override
     protected CharSequence getTitle() {
-        return s("Обход блокировок", "Bypass blocking");
+        return setup ? s("Подключение к Telegram", "Connecting to Telegram") : s("Обход блокировок", "Bypass blocking");
+    }
+
+    @Override
+    public android.view.View createView(android.content.Context context) {
+        android.view.View v = super.createView(context);
+        if (setup && actionBar != null) {
+            actionBar.setBackButtonDrawable(null); // шаг первого запуска: назад некуда
+        }
+        return v;
+    }
+
+    @Override
+    public boolean onBackPressed(boolean invoked) {
+        return !setup && super.onBackPressed(invoked);
+    }
+
+    private int connectionState() {
+        return org.telegram.tgnet.ConnectionsManager.getInstance(currentAccount).getConnectionState();
+    }
+
+    private boolean connected() {
+        int st = connectionState();
+        return st == org.telegram.tgnet.ConnectionsManager.ConnectionStateConnected
+                || st == org.telegram.tgnet.ConnectionsManager.ConnectionStateUpdating;
+    }
+
+    private String connectionText() {
+        switch (connectionState()) {
+            case org.telegram.tgnet.ConnectionsManager.ConnectionStateConnected:
+            case org.telegram.tgnet.ConnectionsManager.ConnectionStateUpdating:
+                return "✅ " + (SharedConfig.isProxyEnabled() ? s("Связь есть, через прокси", "Connected via proxy") : s("Связь есть", "Connected"));
+            case org.telegram.tgnet.ConnectionsManager.ConnectionStateWaitingForNetwork:
+                return "📵 " + s("Нет сети", "No network");
+            case org.telegram.tgnet.ConnectionsManager.ConnectionStateConnectingToProxy:
+                return "⏳ " + s("Подключение к прокси…", "Connecting to proxy…");
+            default:
+                return "⏳ " + s("Подключение к Telegram…", "Connecting to Telegram…");
+        }
     }
 
     @Override
     public boolean onFragmentCreate() {
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.proxySettingsChanged);
+        getNotificationCenter().addObserver(this, NotificationCenter.didUpdateConnectionState);
         return super.onFragmentCreate();
     }
 
     @Override
     public void onFragmentDestroy() {
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.proxySettingsChanged);
+        getNotificationCenter().removeObserver(this, NotificationCenter.didUpdateConnectionState);
         super.onFragmentDestroy();
     }
 
@@ -89,6 +143,23 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
                 ? SharedConfig.currentProxy.settings.getAddress() + ":" + SharedConfig.currentProxy.settings.getPort()
                 : s("выключен", "off");
 
+        // статус связи — сверху, на обоих экранах
+        items.add(UItem.asHeader(s("Связь с Telegram", "Connection to Telegram")));
+        items.add(UItem.asButton(0, connectionText()));
+        String iso = Bypass.countryIso();
+        boolean blocking = Bypass.isBlockingCountry(iso);
+        if (setup) {
+            items.add(UItem.asShadow((blocking
+                    ? s("В вашей стране (" + iso + ") Telegram блокируют: без обхода войти не получится. Добавьте прокси ниже, при необходимости включите защиту от DPI и дождитесь «Связь есть».",
+                        "Telegram is blocked in your country (" + iso + "): you cannot sign in without a bypass. Add proxies below, enable DPI protection if needed and wait for \"Connected\".")
+                    : s("Если Telegram у вас не блокируют, связь появится сама. Иначе добавьте прокси и включите защиту от DPI ниже.",
+                        "If Telegram is not blocked where you are, the connection appears by itself. Otherwise add proxies and enable DPI protection below."))
+                    + "\n\n" + s("Настройки можно поменять позже: Настройки → RecGram → Обход блокировок.",
+                        "You can change this later: Settings → RecGram → Bypass blocking.")));
+        } else {
+            items.add(UItem.asShadow(null));
+        }
+
         items.add(UItem.asHeader(s("Прокси", "Proxy")));
         items.add(UItem.asButton(ID_PROXY_LIST, s("Список прокси", "Proxy list"), current + " · " + SharedConfig.proxyList.size()));
         items.add(UItem.asButton(ID_IMPORT, s("Импорт из буфера обмена", "Import from clipboard")));
@@ -97,9 +168,11 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
         if (!sub.isEmpty()) {
             items.add(UItem.asButton(ID_SUB_UPDATE, s("Обновить подписку", "Update subscription")));
         }
-        items.add(UItem.asButton(ID_BEST, checking
-                ? "⏳ " + (checkProgress != null ? checkProgress : s("Проверяю прокси…", "Checking proxies…"))
+        items.add(UItem.asButton(ID_BEST, checking ? "⏳ " + s("Проверяю прокси…", "Checking proxies…")
                 : s("Проверить все и включить самый быстрый", "Check all and use the fastest")).accent());
+        if (checking && checkProgress != null) {
+            items.add(UItem.asShadow("⏳ " + checkProgress));
+        }
         items.add(UItem.asShadow((status != null ? status + "\n\n" : "") + s(
                 "Блокировку Telegram по адресам серверов обходит только прокси. Лучше всего работает MTProto-прокси с маскировкой под HTTPS (ссылка с секретом, начинающимся на ee). Импорт понимает ссылки tg://proxy, t.me/proxy, tg://socks и t.me/socks — сразу много из скопированного текста. Подписка — ссылка на страницу или файл со списком таких ссылок.",
                 "Only a proxy gets around blocking of Telegram server addresses. An MTProto proxy disguised as HTTPS works best (a link with a secret starting with ee). Import understands tg://proxy, t.me/proxy, tg://socks and t.me/socks links — many at once from copied text. A subscription is a link to a page or file with such links.")));
@@ -111,11 +184,10 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
         }
         items.add(UItem.asCheck(ID_DIRECT, s("Также без маскировки под HTTPS", "Also without HTTPS disguise"))
                 .setChecked(Bypass.isDpiDirect()).setEnabled(!busy && mode != Bypass.DPI_OFF));
-        items.add(UItem.asButton(ID_AUTO, busy
-                ? "⏳ " + (autoProgress != null ? autoProgress : s("Подбираю…", "Selecting…"))
+        items.add(UItem.asButton(ID_AUTO, busy ? "⏳ " + s("Подбираю режим…", "Selecting a mode…")
                 : s("Подобрать автоматически", "Select automatically")).accent());
-        if (autoLog.length() > 0) {
-            items.add(UItem.asShadow(autoLog.toString().trim()));
+        if (autoLog.length() > 0 || busy && autoProgress != null) {
+            items.add(UItem.asShadow(((busy && autoProgress != null ? "⏳ " + autoProgress + "\n" : "") + autoLog).trim()));
         }
         items.add(UItem.asShadow(s(
                 "Оборудование провайдера (DPI) узнаёт прокси по имени сайта в первом пакете. RecGram режет этот пакет так, чтобы DPI не смог его прочитать, а сервер получил всё без изменений.\n"
@@ -128,6 +200,15 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
                         + "• \"Split packet\": some proxy servers (mtg, mtprotoproxy) may reject a packet that arrives in two parts.\n"
                         + "• \"OOB byte\": only for proxies disguised as HTTPS; other connections get a plain split instead.\n"
                         + "\"Also without disguise\" also splits the first packet of direct connections and plain MTProto proxies. Automatic selection checks all proxies in each mode and keeps the best. This does not help against address blocking or for calls — a proxy is needed.")));
+        if (setup) {
+            items.add(UItem.asShadow(null));
+            boolean ok = connected();
+            items.add(UItem.asButton(ID_CONTINUE, ok ? s("Продолжить", "Continue")
+                    : blocking ? s("Продолжить — нет связи с Telegram", "Continue — no connection to Telegram")
+                    : s("Продолжить без проверки связи", "Continue without a connection check")).accent());
+            items.add(UItem.asShadow(s("После «Продолжить» RecGram перезапустится с этими настройками и откроет вход в Telegram.",
+                    "After \"Continue\" RecGram restarts with these settings and opens the Telegram sign-in.")));
+        }
     }
 
     private static String shortUrl(String url) {
@@ -140,6 +221,15 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
         int id = item.id;
         Context ctx = getParentActivity();
         if (ctx == null) {
+            return;
+        }
+        if (id == ID_CONTINUE) {
+            if (!connected() && Bypass.isBlockingCountry(Bypass.countryIso())) {
+                Toast.makeText(ctx, s("Сначала нужна связь с Telegram: добавьте рабочий прокси.", "A connection to Telegram is needed first: add a working proxy."), Toast.LENGTH_LONG).show();
+                return;
+            }
+            Bypass.setSetupDone();
+            org.recgram.ApiKeys.restartApp();
             return;
         }
         if (id == ID_PROXY_LIST) {
@@ -174,7 +264,7 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             status = null;
             update();
             Bypass.checkAll((done, total, okCount) -> {
-                checkProgress = s("Проверено ", "Checked ") + done + "/" + total + s(", ответили ", ", ok ") + okCount;
+                checkProgress = s("Проверено ", "Checked ") + done + s(" из ", " of ") + total + s(" прокси, ответили ", " proxies, responded ") + okCount;
                 update();
             }, ok -> {
                 checking = false;
@@ -211,8 +301,8 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             Bypass.autoSelect(Bypass.isDpiDirect(), new Bypass.AutoProgress() {
                 @Override
                 public void onStep(int mode, int step, int steps, int done, int total, int okCount) {
-                    // коротко, чтобы влезло в кнопку; проверяемый режим отмечен в списке выше
-                    autoProgress = s("Режим ", "Mode ") + step + "/" + steps + " · " + done + "/" + total + s(" прокси", " proxies");
+                    autoProgress = s("Сейчас: режим ", "Now: mode ") + step + s(" из ", " of ") + steps + " — «" + modeTitle(mode) + "», "
+                            + s("проверено ", "checked ") + done + s(" из ", " of ") + total + s(" прокси, ответили ", " proxies, responded ") + okCount;
                     update();
                 }
 
