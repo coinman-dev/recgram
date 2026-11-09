@@ -35,7 +35,7 @@ public class RecChip extends TextView {
             if (CallRecordController.isRecording()) {
                 CallRecordController.stop();
             } else if (CallRecordController.canStart()) {
-                CallRecordController.start(VoIPService.getSharedInstance());
+                CallRecordController.startWithNotice(VoIPService.getSharedInstance());
             }
             refresh();
         });
@@ -48,6 +48,10 @@ public class RecChip extends TextView {
             long sec = CallRecordController.elapsedMs() / 1000;
             setText(String.format(Locale.US, "●  REC  %02d:%02d", sec / 60, sec % 60));
             bg.setColor(0xE6FF3B30);
+            setVisibility(View.VISIBLE);
+        } else if (CallRecordController.isNoticePlaying()) {
+            setText(s("🔊  Предупреждение о записи…", "🔊  Recording notice…"));
+            bg.setColor(0xE6FF9500);
             setVisibility(View.VISIBLE);
         } else if (CallRecordController.canStart()) {
             setText(s("●  Записать", "●  Record"));

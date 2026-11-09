@@ -116,6 +116,7 @@ public final class CallRecorder {
     // ---- данные из WebRTC ----
 
     public static void onMic(ByteBuffer buf, int bytes, int sampleRate, int channels) {
+        VoiceNotice.process(buf, bytes, sampleRate, channels); // голосовое предупреждение вместо микрофона
         CallRecorder r = active;
         if (r != null) {
             r.mic(toMono48k(buf, bytes, sampleRate, channels));

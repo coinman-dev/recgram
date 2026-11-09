@@ -23,6 +23,7 @@ public class RecordingSettingsActivity extends UniversalFragment {
     private static final int ID_VIDEO = 21;
     private static final int ID_NOTIFY = 22;
     private static final int ID_LEVEL = 23;
+    private static final int ID_VOICE = 24;
     private static final int ID_RECORDINGS = 30;
     private static final int ID_CODEC_HEVC = 40;
     private static final int ID_CODEC_AVC = 41;
@@ -75,7 +76,15 @@ public class RecordingSettingsActivity extends UniversalFragment {
         items.add(UItem.asCheck(ID_AUDIO, s("Звук", "Audio")).setChecked(RecGramConfig.isRecordAudio()).setEnabled(allowed));
         items.add(UItem.asCheck(ID_VIDEO, s("Видео в видеозвонках", "Video in video calls")).setChecked(RecGramConfig.isRecordVideo()).setEnabled(allowed));
         items.add(UItem.asCheck(ID_LEVEL, s("Выравнивать громкость голосов", "Even out voice volume")).setChecked(RecGramConfig.isAutoLevel()).setEnabled(allowed));
+        boolean red = c != null && c.color() == RecordingRules.Color.RED;
+        boolean voiceAllowed = c != null && !"absolute".equals(c.self);
+        items.add(UItem.asCheck(ID_VOICE, s("Голосовое предупреждение", "Voice notice"))
+                .setChecked(RecGramConfig.isVoiceNotice()).setEnabled(voiceAllowed));
         items.add(UItem.asCheck(ID_NOTIFY, s("Сообщать собеседнику о записи", "Tell the other party about recording")).setChecked(RecGramConfig.isNotifyPeer()).setEnabled(allowed));
+        items.add(UItem.asShadow(s("Голосовое предупреждение: в начале звонка собеседник слышит «Внимание. Этот разговор записывается», запись начинается после него. "
+                        + (red ? "В вашей стране запись без согласия запрещена, поэтому запись возможна только с голосовым предупреждением." : ""),
+                "Voice notice: at the start of the call the other party hears \"Attention. This call is being recorded\", recording starts after it. "
+                        + (red ? "Recording without consent is prohibited in your country, so recording is possible only with the voice notice." : ""))));
         items.add(UItem.asShadow(s("Звонки записываются в Opus, моно, 64 кбит/с — папка Recordings/RecGram, данные звонка внутри файла. Видеозвонки — в MP4, папка Movies/RecGram. Сообщение о записи уходит собеседнику до ответа на звонок.",
                 "Calls are recorded as Opus, mono, 64 kbps in Recordings/RecGram, call data inside the file. Video calls are recorded as MP4 in Movies/RecGram. The recording notice is sent to the other party before the call is answered.")));
 
@@ -128,6 +137,17 @@ public class RecordingSettingsActivity extends UniversalFragment {
                 if (!allowed) return;
                 RecGramConfig.setRecordVideo(!RecGramConfig.isRecordVideo());
                 break;
+            case ID_VOICE: {
+                if (c0() == null || "absolute".equals(c0().self)) return;
+                boolean on = !RecGramConfig.isVoiceNotice();
+                RecGramConfig.setVoiceNotice(on);
+                if (on) {
+                    org.recgram.rec.VoiceNotice.prepare();
+                } else if (!RecordingRules.isRecordingAllowed()) {
+                    RecGramConfig.setRecordingMode(RecGramConfig.RECORD_OFF);
+                }
+                break;
+            }
             case ID_LEVEL:
                 if (!allowed) return;
                 RecGramConfig.setAutoLevel(!RecGramConfig.isAutoLevel());
@@ -145,6 +165,10 @@ public class RecordingSettingsActivity extends UniversalFragment {
                 break;
         }
         listView.adapter.update(true);
+    }
+
+    private static RecordingRules.Country c0() {
+        return RecordingRules.selected();
     }
 
     @Override

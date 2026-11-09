@@ -66,8 +66,8 @@ final class RuleTexts {
                         "Recording without consent is not a crime, but it violates the other party's rights: they can sue you.");
                 break;
             case "criminal_prohibited":
-                text = s("Запись без согласия собеседника — уголовное преступление. Запись звонков в RecGram отключена.",
-                        "Recording without the other party's consent is a criminal offence. Call recording in RecGram is disabled.");
+                text = s("Запись без согласия собеседника — уголовное преступление. Записывать можно только с голосовым предупреждением в начале звонка: собеседник слышит, что разговор записывается, и может положить трубку.",
+                        "Recording without the other party's consent is a criminal offence. Recording is possible only with a voice notice at the start of the call: the other party hears that the call is recorded and can hang up.");
                 break;
             case "absolute":
                 text = s("Запись без согласия запрещена даже при угрозах от знакомого человека. Запись звонков в RecGram отключена.",

@@ -69,12 +69,14 @@ public final class CallRecordController {
         } else if (state == VoIPService.STATE_ESTABLISHED && !established) {
             established = true;
             if (RecGramConfig.getRecordingMode() == RecGramConfig.RECORD_AUTO && canStart()) {
-                start(service);
+                startWithNotice(service);
             }
         } else if (state == VoIPService.STATE_ENDED || state == VoIPService.STATE_FAILED
                 || state == VoIPService.STATE_HANGING_UP || state == VoIPService.STATE_BUSY) {
             established = false;
             notifiedThisCall = false;
+            noticePending = false;
+            VoiceNotice.cancel();
             stop();
         }
     }
@@ -118,9 +120,34 @@ public final class CallRecordController {
     /** Можно ли начать запись прямо сейчас (страна, настройки, идёт личный звонок). */
     public static boolean canStart() {
         VoIPService s = VoIPService.getSharedInstance();
-        return recorder == null && established && s != null
+        return recorder == null && !noticePending && established && s != null
                 && RecordingRules.isRecordingAllowed() && RecGramConfig.isRecordAudio()
                 && RecGramConfig.getRecordingMode() != RecGramConfig.RECORD_OFF;
+    }
+
+    private static boolean noticePending;
+
+    /** Сначала голосовое предупреждение (если нужно), потом запись. Для личных звонков. */
+    public static void startWithNotice(VoIPService service) {
+        if (service == null || recorder != null || noticePending) {
+            return;
+        }
+        if (service.groupCall != null || !RecordingRules.voiceNoticeRequired()) {
+            start(service);
+            return;
+        }
+        noticePending = true;
+        VoiceNotice.play(() -> {
+            noticePending = false;
+            VoIPService s = VoIPService.getSharedInstance();
+            if (established && s == service) {
+                start(service);
+            }
+        });
+    }
+
+    public static boolean isNoticePlaying() {
+        return noticePending;
     }
 
     public static boolean isRecording() {

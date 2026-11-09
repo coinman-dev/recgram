@@ -50,6 +50,9 @@ public final class RecGramConfig {
     public static void setVideoBitrate(boolean hevc, int bps) {
         prefs().edit().putInt(hevc ? "video_bitrate_hevc" : "video_bitrate_avc", bps).apply();
     }
+    /** Голосовое предупреждение собеседнику в начале звонка (в красных странах — обязательно). */
+    public static boolean isVoiceNotice() { return b("voice_notice", false); }
+    public static void setVoiceNotice(boolean v) { put("voice_notice", v); }
     /** Выравнивать громкость голосов при записи. */
     public static boolean isAutoLevel() { return b("auto_level", true); }
     public static void setAutoLevel(boolean v) { put("auto_level", v); }

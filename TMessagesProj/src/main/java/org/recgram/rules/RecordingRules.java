@@ -186,7 +186,16 @@ public final class RecordingRules {
         switch (c.color()) {
             case GREEN: return true;
             case YELLOW: return c.id.equals(RecGramConfig.getAcceptedRiskCountryId());
-            default: return false;
+            default:
+                // Красная страна: запись возможна только с голосовым предупреждением,
+                // кроме стран, где нужно явное согласие (absolute)
+                return "criminal_prohibited".equals(c.self) && RecGramConfig.isVoiceNotice();
         }
+    }
+
+    /** Нужно ли голосовое предупреждение перед записью. */
+    public static boolean voiceNoticeRequired() {
+        Country c = selected();
+        return RecGramConfig.isVoiceNotice() || (c != null && c.color() == Color.RED);
     }
 }
