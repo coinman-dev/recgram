@@ -155,8 +155,18 @@ public class CountrySelectActivity extends UniversalFragment {
             @Override public void beforeTextChanged(CharSequence c, int a, int b, int d) {}
             @Override public void onTextChanged(CharSequence c, int a, int b, int d) {}
             @Override public void afterTextChanged(android.text.Editable e) {
+                if (query.equals(e.toString())) {
+                    return;
+                }
                 query = e.toString();
                 listView.adapter.update(false);
+                // Список перестраивается и поле теряет фокус — возвращаем его
+                search.post(() -> {
+                    if (!search.hasFocus()) {
+                        search.requestFocus();
+                        search.setSelection(search.length());
+                    }
+                });
             }
         });
         header.addView(search, org.telegram.ui.Components.LayoutHelper.createFrame(180, 44, android.view.Gravity.RIGHT | android.view.Gravity.CENTER_VERTICAL, 0, 0, 16, 0));
