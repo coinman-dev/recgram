@@ -19,6 +19,7 @@ public final class AppNameStrings {
     }
 
     private static final Set<String> KEYS = new HashSet<>(Arrays.asList(
+            "AppName", "AppNameBeta", // заголовок списка чатов: серверный языковой пакет даёт «Telegram»
             "ContactsPermissionAlert", "NotificationsPermissionAlertSubtitle",
             "NotificationHiddenName", "NotificationHiddenChatName",
             "AppUpdate", "AppUpdateBeta", "UpdateTelegram", "UpdateAppAlert", "Gift2ExportTONUpdateRequiredText",
