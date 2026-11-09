@@ -82,20 +82,23 @@ final class RecordingStore {
         }
     }
 
-    /**
-     * JSON с данными звонка рядом с записью. Android может не пустить не-аудиофайл в папку записей,
-     * тогда файл кладётся в Documents/RecGram. Возвращает путь или null.
-     */
+    /** Папка для JSON с данными звонков (решение пользователя: все JSON — в Documents/RecGram/json). */
+    static final String JSON_DIR = Environment.DIRECTORY_DOCUMENTS + "/" + SUBDIR + "/json";
+
+    /** JSON с данными звонка → Documents/RecGram/json. Возвращает путь или null. */
     static String publishJson(File src) {
-        String[] dirs = {Environment.DIRECTORY_DOCUMENTS + "/" + SUBDIR};
+        String[] dirs = {JSON_DIR};
         if (Build.VERSION.SDK_INT < 29) {
             try {
-                File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), SUBDIR);
+                File dir = new File(Environment.getExternalStorageDirectory(), JSON_DIR);
+                if (!dir.exists() && !dir.mkdirs()) {
+                    return null;
+                }
                 File dst = new File(dir, src.getName());
                 try (InputStream in = new FileInputStream(src); OutputStream out = new FileOutputStream(dst)) {
                     copy(in, out);
                 }
-                return Environment.DIRECTORY_MUSIC + "/" + SUBDIR + "/" + src.getName();
+                return JSON_DIR + "/" + src.getName();
             } catch (Throwable e) {
                 FileLog.e(e);
                 return null;
