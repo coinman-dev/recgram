@@ -174,7 +174,7 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             status = null;
             update();
             Bypass.checkAll((done, total, okCount) -> {
-                checkProgress = s("Проверено ", "Checked ") + done + s(" из ", " of ") + total + s(", ответили ", ", responded ") + okCount;
+                checkProgress = s("Проверено ", "Checked ") + done + "/" + total + s(", ответили ", ", ok ") + okCount;
                 update();
             }, ok -> {
                 checking = false;
@@ -211,8 +211,8 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             Bypass.autoSelect(Bypass.isDpiDirect(), new Bypass.AutoProgress() {
                 @Override
                 public void onStep(int mode, int step, int steps, int done, int total, int okCount) {
-                    autoProgress = s("Режим ", "Mode ") + step + s(" из ", " of ") + steps + ": " + modeTitle(mode)
-                            + " — " + done + "/" + total + s(", ответили ", ", responded ") + okCount;
+                    // коротко, чтобы влезло в кнопку; проверяемый режим отмечен в списке выше
+                    autoProgress = s("Режим ", "Mode ") + step + "/" + steps + " · " + done + "/" + total + s(" прокси", " proxies");
                     update();
                 }
 
