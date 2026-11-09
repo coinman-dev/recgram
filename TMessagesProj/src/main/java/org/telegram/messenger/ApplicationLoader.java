@@ -103,7 +103,11 @@ public class ApplicationLoader extends Application {
     }
 
     protected IMapsProvider onCreateMapsProvider() {
-        return new GoogleMapsProvider();
+        // RecGram: ключ Google Maps привязан к пакету Telegram, поэтому карты OpenStreetMap
+        org.osmdroid.config.Configuration.getInstance().setUserAgentValue("RecGram/" + BuildVars.BUILD_VERSION_STRING);
+        org.osmdroid.config.Configuration.getInstance().setOsmdroidBasePath(new java.io.File(applicationContext.getCacheDir(), "osmdroid"));
+        org.osmdroid.config.Configuration.getInstance().setOsmdroidTileCache(new java.io.File(applicationContext.getCacheDir(), "osmdroid/tiles"));
+        return new OSMDroidMapsProvider();
     }
 
     public static PushListenerController.IPushListenerServiceProvider getPushProvider() {
