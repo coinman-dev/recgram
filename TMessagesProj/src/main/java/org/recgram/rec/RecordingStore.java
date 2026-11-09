@@ -87,7 +87,7 @@ final class RecordingStore {
      * тогда файл кладётся в Documents/RecGram. Возвращает путь или null.
      */
     static String publishJson(File src) {
-        String[] dirs = {relativeDir(), Environment.DIRECTORY_DOCUMENTS + "/" + SUBDIR};
+        String[] dirs = {Environment.DIRECTORY_DOCUMENTS + "/" + SUBDIR};
         if (Build.VERSION.SDK_INT < 29) {
             try {
                 File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), SUBDIR);

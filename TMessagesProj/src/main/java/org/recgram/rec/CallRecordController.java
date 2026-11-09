@@ -267,8 +267,8 @@ public final class CallRecordController {
             }
             String published = r.isFailed() ? null : RecordingStore.publish(r.getFile(), title);
             File meta = writeMetadata(r, started, id, name, phone, out, notified, published);
-            // Данные уже внутри .opus — отдельный JSON нужен только для .m4a
-            String metaPublished = !tagged && meta != null ? RecordingStore.publishJson(meta) : null;
+            // Данные звонка всегда копируются в Documents/RecGram (в .opus они ещё и в тегах)
+            String metaPublished = meta != null ? RecordingStore.publishJson(meta) : null;
             if (published != null) {
                 r.getFile().delete();
             }
