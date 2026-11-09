@@ -115,7 +115,8 @@ final class VideoTap {
     // ---- кадры из звонка (потоки WebRTC) ----
 
     private void onRemote(VideoFrame frame) {
-        if (stopped || failed || gl == null || queued.get() > 2) {
+        // Не больше одного кадра собеседника в работе: декодер тоже ждёт освобождения кадра
+        if (stopped || failed || gl == null || queued.get() > 0) {
             return;
         }
         frame.retain();
@@ -131,22 +132,44 @@ final class VideoTap {
         }
     }
 
+    private long lastLocalCopyNs;
+
+    /**
+     * Кадр своей камеры. Держать его нельзя: камера отдаёт следующий кадр только после
+     * освобождения предыдущего (SurfaceTextureHelper) — иначе застывает превью в звонке.
+     * Поэтому кадр сразу копируется в I420 (в обычную память), оригинал не удерживается.
+     */
     private void onLocal(VideoFrame frame) {
         if (stopped || failed || gl == null) {
             return;
         }
-        frame.retain();
+        long now = System.nanoTime();
+        boolean remoteActive = now - lastRemoteNs < 300_000_000L;
+        // Для окна в углу хватит 10 кадров/с; если собеседник без видео — своя камера на весь кадр, 30 кадров/с
+        if (remoteActive && now - lastLocalCopyNs < 100_000_000L) {
+            return;
+        }
+        lastLocalCopyNs = now;
+        final VideoFrame copy;
+        try {
+            VideoFrame.I420Buffer i420 = frame.getBuffer().toI420();
+            if (i420 == null) {
+                return;
+            }
+            copy = new VideoFrame(i420, frame.getRotation(), frame.getTimestampNs());
+        } catch (Throwable e) {
+            return;
+        }
         if (!gl.post(() -> {
             if (lastLocal != null) {
                 lastLocal.release();
             }
-            lastLocal = frame;
-            // Видео собеседника нет — пишем свою камеру
+            lastLocal = copy;
             if (System.nanoTime() - lastRemoteNs > 300_000_000L) {
                 render(null);
             }
         })) {
-            frame.release();
+            copy.release();
         }
     }
 

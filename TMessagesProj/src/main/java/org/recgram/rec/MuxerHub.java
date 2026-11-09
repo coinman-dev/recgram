@@ -78,10 +78,18 @@ final class MuxerHub {
         }
     }
 
+    private final java.util.HashMap<Integer, Long> lastPts = new java.util.HashMap<>();
+
     synchronized void write(int track, ByteBuffer buf, MediaCodec.BufferInfo info) {
         if (released || info.size <= 0) {
             return;
         }
+        // Метки времени каждой дорожки должны строго возрастать
+        Long prev = lastPts.get(track);
+        if (prev != null && info.presentationTimeUs <= prev) {
+            info.presentationTimeUs = prev + 1;
+        }
+        lastPts.put(track, info.presentationTimeUs);
         if (started) {
             buf.position(info.offset);
             buf.limit(info.offset + info.size);

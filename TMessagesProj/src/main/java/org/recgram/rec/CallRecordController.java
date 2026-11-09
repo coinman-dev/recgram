@@ -80,6 +80,21 @@ public final class CallRecordController {
     }
 
     /**
+     * Входящий звонок звонит (VoIPPreNotificationService): VoIPService ещё не запущен,
+     * поэтому предупреждение отправляется отсюда.
+     */
+    public static void onIncomingRinging(int account, long userId) {
+        if (notifiedThisCall || userId == 0 || !RecGramConfig.isNotifyPeer()
+                || RecGramConfig.getRecordingMode() != RecGramConfig.RECORD_AUTO
+                || !RecordingRules.isRecordingAllowed() || !RecGramConfig.isRecordAudio()) {
+            return;
+        }
+        notifiedThisCall = true;
+        SendMessagesHelper.getInstance(account).sendMessage(SendMessagesHelper.SendMessageParams.of(
+                s("🔴 Если ответить, этот звонок будет записан (RecGram)", "🔴 If answered, this call will be recorded (RecGram)"), userId));
+    }
+
+    /**
      * Предупреждение до соединения: исходящий — вместе с вызовом, входящий — пока звонит.
      * Только для режима «все звонки»: в ручном режиме неизвестно, будет ли запись.
      */

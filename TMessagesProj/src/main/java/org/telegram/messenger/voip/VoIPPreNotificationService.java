@@ -423,6 +423,7 @@ public class VoIPPreNotificationService { // } extends Service implements AudioM
             final NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             nm.notify(VoIPService.ID_INCOMING_CALL_PRENOTIFICATION, makeNotification(context, account, user_id, call.id, video));
             startRinging(context, account, user_id);
+            org.recgram.rec.CallRecordController.onIncomingRinging(account, user_id); // RecGram
         });
     }
 
