@@ -38,7 +38,7 @@ public class ApiKeyActivity extends UniversalFragment {
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         boolean custom = ApiKeys.isCustom();
         items.add(UItem.asHeader(s("Сейчас используется", "Currently used")));
-        items.add(UItem.asButton(0, custom ? s("Свой ключ", "Your own key") : s("Встроенный ключ RecGram", "Built-in RecGram key"),
+        items.add(UItem.asButton(0, custom ? s("Свой", "Your own") : s("Встроенный", "Built-in"),
                 "api_id " + ApiKeys.currentId()));
         items.add(UItem.asShadow(s(
                 "Встроенный ключ общий для всех пользователей RecGram. Если Telegram его заблокирует, приложение перестанет работать у всех, а со своим ключом — продолжит. Свой ключ нужен и для сохранения исчезающих медиа.",
