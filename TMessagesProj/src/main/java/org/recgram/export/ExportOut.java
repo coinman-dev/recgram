@@ -27,7 +27,7 @@ import java.util.Set;
  */
 final class ExportOut {
 
-    /** Путь от корня памяти, например Documents/RecGram/Export/ChatExport_Мама_2026-11-09_19-20. */
+    /** Путь от корня памяти, например Documents/RecGram/Export/ChatExport_Имя_2026-11-09_19-20. */
     final String relDir;
     private final Set<String> used = new HashSet<>();
 
