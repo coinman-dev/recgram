@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- RecGram: облачко с точкой записи для тематических иконок Android 13+ -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M45,37h18a10,10 0 0 1 10,10v8a10,10 0 0 1 -10,10h-13l-9,7.5c-1,0.8 -2.3,0 -2,-1.2l1.6,-7.2a10,10 0 0 1 -5.6,-9v-8a10,10 0 0 1 10,-10z M54,44.5a6.5,6.5 0 1 1 0,13a6.5,6.5 0 1 1 0,-13z" />
+</vector>

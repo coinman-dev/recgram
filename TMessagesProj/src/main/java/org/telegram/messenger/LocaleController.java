@@ -1474,7 +1474,7 @@ public class LocaleController {
         if (value == null) {
             return "LOC_ERR:" + key;
         }
-        return value;
+        return org.recgram.AppNameStrings.fix(key, res, value); // RecGram: «Telegram» как название приложения → RecGram
     }
 
     public static String getServerString(String key) {

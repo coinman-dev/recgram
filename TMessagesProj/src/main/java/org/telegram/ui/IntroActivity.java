@@ -160,6 +160,14 @@ public class IntroActivity extends BaseFragment implements NotificationCenter.No
         titles[0] = ssb;
         messages[0] = org.recgram.RLocale.s("Telegram с записью звонков\nи без ограничений на копирование.\nНеофициальный клиент.",
                 "Telegram with call recording\nand no copy restrictions.\nUnofficial client."); // RecGram
+        for (int i = 1; i < messages.length; i++) { // RecGram: на остальных страницах — название приложения
+            if (messages[i] != null) {
+                messages[i] = messages[i].replace("Telegram", "RecGram");
+            }
+            if (titles[i] instanceof String) {
+                titles[i] = ((String) titles[i]).replace("Telegram", "RecGram");
+            }
+        }
 
 
         actionBar.setAddToContainer(false);
@@ -793,7 +801,20 @@ public class IntroActivity extends BaseFragment implements NotificationCenter.No
             loadTexture(R.drawable.intro_powerful_star, 18);
             loadTexture(R.drawable.intro_private_door, 19);
             loadTexture(R.drawable.intro_private_screw, 20);
-            loadTexture(R.drawable.intro_tg_plane, 21, 0xFFFF3B30, false); // RecGram: красный самолётик
+            // RecGram: вместо самолётика Telegram — облачко с точкой записи из иконки RecGram
+            loadTexture(v -> {
+                Drawable plane = getParentActivity().getResources().getDrawable(R.drawable.intro_tg_plane);
+                int w = plane.getIntrinsicWidth(), h = plane.getIntrinsicHeight();
+                Bitmap bm = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+                Canvas c = new Canvas(bm);
+                Drawable glyph = getParentActivity().getResources().getDrawable(R.drawable.recgram_icon_foreground);
+                // облачко в слое иконки занимает x 35..73, y 37..72.5 из 108
+                float scale = Math.min(w / 38f, h / 35.5f) * 0.9f;
+                c.translate(w / 2f - 54f * scale, h / 2f - 54.75f * scale);
+                glyph.setBounds(0, 0, Math.round(108 * scale), Math.round(108 * scale));
+                glyph.draw(c);
+                return bm;
+            }, 21);
             loadTexture(v -> {
                 Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
                 paint.setColor(ThemeColors.TELEGRAM_COLOR); // It's logo color, it should not be colored by the theme
