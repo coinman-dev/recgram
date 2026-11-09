@@ -92,6 +92,17 @@ def watch(stop_at, done):
         time.sleep(1)
 
 
+def installed_matches(apk, package="app.recgram.beta"):
+    import hashlib
+    try:
+        path = ui.adb("shell", "pm", "path", package).strip().splitlines()[0].replace("package:", "").strip()
+        remote = ui.adb("shell", "sha256sum", path).split()[0]
+        local = hashlib.sha256(apk.read_bytes()).hexdigest()
+        return remote == local
+    except Exception:
+        return False
+
+
 def main():
     apk = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "builds" / "RecGram-dev-latest-debug.apk"
     if not apk.exists():
@@ -108,6 +119,11 @@ def main():
     stop_at[0] = time.time() + 40
     t.join()
     ok = r.returncode == 0 and any("Success" in line for line in out)
+    if not ok:
+        # Avast может оборвать ответ adb, хотя установка прошла: сверяем хеш установленного APK
+        ok = installed_matches(apk)
+        if ok:
+            print("adb сообщил об ошибке, но установленный APK совпадает с собранным")
     print("Готово" if ok else "Установка не удалась")
     sys.exit(0 if ok else 1)
 
