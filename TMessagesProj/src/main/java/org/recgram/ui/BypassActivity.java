@@ -32,8 +32,12 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
     private static final int ID_MODE_BASE = 10;
     private static final int ID_DIRECT = 20, ID_AUTO = 21;
 
-    private boolean busy;
-    private String status;
+    private boolean busy;          // идёт автоподбор
+    private boolean checking;      // идёт «проверить все»
+    private String status;         // итог действий с прокси (под блоком «Прокси»)
+    private String checkProgress;  // ход «проверить все» — в тексте кнопки
+    private String autoProgress;   // ход автоподбора — в тексте кнопки
+    private final StringBuilder autoLog = new StringBuilder(); // итоги по режимам — под кнопкой автоподбора
 
     @Override
     protected CharSequence getTitle() {
@@ -93,7 +97,9 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
         if (!sub.isEmpty()) {
             items.add(UItem.asButton(ID_SUB_UPDATE, s("Обновить подписку", "Update subscription")));
         }
-        items.add(UItem.asButton(ID_BEST, s("Проверить все и включить самый быстрый", "Check all and use the fastest")).accent());
+        items.add(UItem.asButton(ID_BEST, checking
+                ? "⏳ " + (checkProgress != null ? checkProgress : s("Проверяю прокси…", "Checking proxies…"))
+                : s("Проверить все и включить самый быстрый", "Check all and use the fastest")).accent());
         items.add(UItem.asShadow((status != null ? status + "\n\n" : "") + s(
                 "Блокировку Telegram по адресам серверов обходит только прокси. Лучше всего работает MTProto-прокси с маскировкой под HTTPS (ссылка с секретом, начинающимся на ee). Импорт понимает ссылки tg://proxy, t.me/proxy, tg://socks и t.me/socks — сразу много из скопированного текста. Подписка — ссылка на страницу или файл со списком таких ссылок.",
                 "Only a proxy gets around blocking of Telegram server addresses. An MTProto proxy disguised as HTTPS works best (a link with a secret starting with ee). Import understands tg://proxy, t.me/proxy, tg://socks and t.me/socks links — many at once from copied text. A subscription is a link to a page or file with such links.")));
@@ -105,7 +111,12 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
         }
         items.add(UItem.asCheck(ID_DIRECT, s("Также без маскировки под HTTPS", "Also without HTTPS disguise"))
                 .setChecked(Bypass.isDpiDirect()).setEnabled(!busy && mode != Bypass.DPI_OFF));
-        items.add(UItem.asButton(ID_AUTO, busy ? s("Подбираю…", "Selecting…") : s("Подобрать автоматически", "Select automatically")).accent());
+        items.add(UItem.asButton(ID_AUTO, busy
+                ? "⏳ " + (autoProgress != null ? autoProgress : s("Подбираю…", "Selecting…"))
+                : s("Подобрать автоматически", "Select automatically")).accent());
+        if (autoLog.length() > 0) {
+            items.add(UItem.asShadow(autoLog.toString().trim()));
+        }
         items.add(UItem.asShadow(s(
                 "Оборудование провайдера (DPI) узнаёт прокси по имени сайта в первом пакете. RecGram режет этот пакет так, чтобы DPI не смог его прочитать, а сервер получил всё без изменений.\n"
                         + "• «Разрез + обратный порядок» — рекомендуется: первая часть приходит позже второй, и сервер получает пакет целиком.\n"
@@ -157,9 +168,16 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
                 update();
                 return;
             }
-            status = s("Проверяю прокси…", "Checking proxies…");
+            if (checking || busy) return;
+            checking = true;
+            checkProgress = null;
+            status = null;
             update();
-            Bypass.checkAll(ok -> {
+            Bypass.checkAll((done, total, okCount) -> {
+                checkProgress = s("Проверено ", "Checked ") + done + s(" из ", " of ") + total + s(", ответили ", ", responded ") + okCount;
+                update();
+            }, ok -> {
+                checking = false;
                 if (ok.isEmpty()) {
                     status = s("Ни один прокси не ответил.", "No proxy responded.");
                 } else {
@@ -177,19 +195,40 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             Bypass.setDpi(Bypass.getDpiMode(), !Bypass.isDpiDirect());
             update();
         } else if (id == ID_AUTO) {
-            if (busy) return;
+            if (busy || checking) return;
+            autoLog.setLength(0);
             if (SharedConfig.proxyList.isEmpty()) {
-                status = s("Для автоподбора нужен хотя бы один прокси в списке.", "Automatic selection needs at least one proxy in the list.");
+                autoLog.append(s("Для автоподбора нужен хотя бы один прокси в списке: добавьте прокси выше.",
+                        "Automatic selection needs at least one proxy in the list: add proxies above."));
                 update();
                 return;
             }
             busy = true;
-            status = s("Подбираю режим: проверяю все прокси в каждом режиме…", "Selecting a mode: checking all proxies in each mode…");
+            autoProgress = null;
+            autoLog.append(s("Проверяю все прокси в каждом из 4 режимов, до 15 секунд на режим.\n",
+                    "Checking all proxies in each of 4 modes, up to 15 seconds per mode.\n"));
             update();
-            Bypass.autoSelect(Bypass.isDpiDirect(), r -> {
+            Bypass.autoSelect(Bypass.isDpiDirect(), new Bypass.AutoProgress() {
+                @Override
+                public void onStep(int mode, int step, int steps, int done, int total, int okCount) {
+                    autoProgress = s("Режим ", "Mode ") + step + s(" из ", " of ") + steps + ": " + modeTitle(mode)
+                            + " — " + done + "/" + total + s(", ответили ", ", responded ") + okCount;
+                    update();
+                }
+
+                @Override
+                public void onModeDone(int mode, int okCount, long bestPing) {
+                    autoLog.append("• ").append(modeTitle(mode)).append(": ")
+                            .append(okCount == 0 ? s("ни один прокси не ответил", "no proxy responded")
+                                    : s("работают ", "working ") + okCount + s(", лучший пинг ", ", best ping ") + bestPing + s(" мс", " ms"))
+                            .append('\n');
+                    update();
+                }
+            }, r -> {
                 busy = false;
-                status = r == null ? s("Ни в одном режиме прокси не ответили. Режим не изменён.", "No proxy responded in any mode. The mode was not changed.")
-                        : s("Выбран режим «", "Selected mode \"") + modeTitle((int) r[0]) + s("»: рабочих прокси ", "\": working proxies ") + r[1] + s(", лучший пинг ", ", best ping ") + r[2] + s(" мс.", " ms.");
+                autoProgress = null;
+                autoLog.append(r == null ? s("Итог: ни в одном режиме прокси не ответили. Режим не изменён.", "Result: no proxy responded in any mode. The mode was not changed.")
+                        : s("Итог: выбран режим «", "Result: selected mode \"") + modeTitle((int) r[0]) + s("».", "\"."));
                 update();
             });
         }

@@ -162,8 +162,17 @@ public final class Bypass {
 
     // ------------------------------------------------------------------ проверка
 
-    /** Проверяет все прокси. По окончании (в UI-потоке) — список рабочих, от быстрого к медленному. */
+    /** Ход проверки: сколько проверено, сколько всего, сколько ответили. Вызывается в UI-потоке. */
+    public interface CheckProgress {
+        void onProgress(int checked, int total, int ok);
+    }
+
     public static void checkAll(Consumer<ArrayList<SharedConfig.ProxyInfo>> done) {
+        checkAll(null, done);
+    }
+
+    /** Проверяет все прокси. По окончании (в UI-потоке) — список рабочих, от быстрого к медленному. */
+    public static void checkAll(CheckProgress progress, Consumer<ArrayList<SharedConfig.ProxyInfo>> done) {
         SharedConfig.loadProxyList();
         ArrayList<SharedConfig.ProxyInfo> list = new ArrayList<>(SharedConfig.proxyList);
         if (list.isEmpty()) {
@@ -171,34 +180,49 @@ public final class Bypass {
             return;
         }
         int account = UserConfig.selectedAccount;
-        int[] left = {list.size()};
+        int total = list.size();
+        int[] checked = {0};
+        int[] ok = {0};
         boolean[] finished = {false};
         Runnable finish = () -> {
             if (finished[0]) return;
             finished[0] = true;
-            ArrayList<SharedConfig.ProxyInfo> ok = new ArrayList<>();
+            ArrayList<SharedConfig.ProxyInfo> working = new ArrayList<>();
             for (SharedConfig.ProxyInfo p : list) {
-                if (p.available && p.ping > 0) ok.add(p);
+                p.checking = false;
+                if (p.available && p.ping > 0) working.add(p);
             }
-            Collections.sort(ok, (a, b) -> Long.compare(a.ping, b.ping));
+            Collections.sort(working, (a, b) -> Long.compare(a.ping, b.ping));
             SharedConfig.saveProxyList();
             NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxySettingsChanged);
-            done.accept(ok);
+            done.accept(working);
         };
+        if (progress != null) {
+            progress.onProgress(0, total, 0);
+        }
         for (SharedConfig.ProxyInfo p : list) {
             p.checking = true;
             p.available = false;
             p.ping = 0;
             ConnectionsManager.getInstance(account).checkProxy(p.settings, time -> AndroidUtilities.runOnUIThread(() -> {
+                if (finished[0]) return;
                 p.checking = false;
                 p.availableCheckTime = android.os.SystemClock.elapsedRealtime();
                 p.available = time > 0;
                 p.ping = time > 0 ? time : 0;
-                if (--left[0] <= 0) finish.run();
+                checked[0]++;
+                if (time > 0) ok[0]++;
+                if (progress != null) {
+                    progress.onProgress(checked[0], total, ok[0]);
+                }
+                if (checked[0] >= total) finish.run();
             }));
         }
-        AndroidUtilities.runOnUIThread(finish, 15000);
+        AndroidUtilities.runOnUIThread(finish, CHECK_TIMEOUT_MS);
     }
+
+    /** Сколько ждать ответа всех прокси в одном режиме. */
+    public static final int CHECK_TIMEOUT_MS = 15000;
 
     /** Включить прокси так же, как это делает список прокси Telegram. */
     public static void enable(SharedConfig.ProxyInfo info) {
@@ -211,16 +235,25 @@ public final class Bypass {
         NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxySettingsChanged);
     }
 
+    /** Ход автоподбора. Вызывается в UI-потоке. */
+    public interface AutoProgress {
+        /** step — номер режима (с 1), steps — всего режимов; checked/total/ok — проверка прокси в этом режиме. */
+        void onStep(int mode, int step, int steps, int checked, int total, int ok);
+
+        /** Режим проверен: сколько прокси ответили и лучший пинг (0 — ни один). */
+        void onModeDone(int mode, int ok, long bestPing);
+    }
+
     /**
      * Автоподбор режима защиты: для каждого режима проверяет все прокси и оставляет режим,
      * при котором работает больше прокси (при равенстве — с самым быстрым). Результат — [режим, рабочих, пинг] или null.
      */
-    public static void autoSelect(boolean direct, Consumer<long[]> done) {
+    public static void autoSelect(boolean direct, AutoProgress progress, Consumer<long[]> done) {
         int[] modes = {DPI_OFF, DPI_SPLIT, DPI_DISORDER, DPI_OOB};
         long[] best = {-1, 0, Long.MAX_VALUE};
         int startMode = getDpiMode();
         boolean startDirect = isDpiDirect();
-        tryMode(modes, 0, direct, best, () -> {
+        tryMode(modes, 0, direct, best, progress, () -> {
             if (best[0] < 0) {
                 setDpi(startMode, startDirect);
                 done.accept(null);
@@ -231,23 +264,28 @@ public final class Bypass {
         });
     }
 
-    private static void tryMode(int[] modes, int i, boolean direct, long[] best, Runnable end) {
+    private static void tryMode(int[] modes, int i, boolean direct, long[] best, AutoProgress progress, Runnable end) {
         if (i >= modes.length) {
             end.run();
             return;
         }
-        prefs().edit().putInt("dpi_mode", modes[i]).putBoolean("dpi_direct", direct).apply();
+        int mode = modes[i];
+        prefs().edit().putInt("dpi_mode", mode).putBoolean("dpi_direct", direct).apply();
         applyDpi();
-        checkAll(ok -> {
+        checkAll((checked, total, ok) -> {
+            if (progress != null) progress.onStep(mode, i + 1, modes.length, checked, total, ok);
+        }, ok -> {
+            long ping = ok.isEmpty() ? 0 : ok.get(0).ping;
+            if (progress != null) progress.onModeDone(mode, ok.size(), ping);
             if (!ok.isEmpty()) {
-                long count = ok.size(), ping = ok.get(0).ping;
+                long count = ok.size();
                 if (count > best[1] || count == best[1] && ping < best[2]) {
-                    best[0] = modes[i];
+                    best[0] = mode;
                     best[1] = count;
                     best[2] = ping;
                 }
             }
-            tryMode(modes, i + 1, direct, best, end);
+            tryMode(modes, i + 1, direct, best, progress, end);
         });
     }
 }
