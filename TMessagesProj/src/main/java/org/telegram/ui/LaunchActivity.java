@@ -2922,6 +2922,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                     }
                 } else if (intent.getAction().equals("org.telegram.messenger.OPEN_ACCOUNT")) {
                     open_settings = 1;
+                } else if (intent.getAction().equals("org.recgram.OPEN_RECORDINGS")) { // RecGram
+                    open_settings = 1001;
                 } else if (intent.getAction().equals("new_dialog")) {
                     open_new_dialog = 1;
                 } else if (intent.getAction().startsWith("com.tmessages.openchat")) {
@@ -3182,7 +3184,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
             } else if (open_settings != 0) {
                 BaseFragment fragment;
                 boolean closePrevious = false;
-                if (open_settings == 1) {
+                if (open_settings == 1001) { // RecGram: из уведомления «Запись звонка сохранена»
+                    fragment = new org.recgram.ui.RecordingsActivity();
+                } else if (open_settings == 1) {
                     fragment = new SettingsActivity();
                 } else if (open_settings == 2) {
                     fragment = new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC);

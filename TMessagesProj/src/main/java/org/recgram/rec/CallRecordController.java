@@ -403,11 +403,21 @@ public final class CallRecordController {
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(path == null ? "" :
                             path + (metaPath == null ? "" : metaPath.startsWith(RecordingStore.relativeDir()) ? "\n" + s("Данные звонка: рядом, файл .json", "Call data: next to it, .json file") : "\n" + s("Данные звонка: ", "Call data: ") + metaPath)))
                     .setAutoCancel(true)
+                    .setContentIntent(openRecordingsIntent(ctx))
                     .setPriority(NotificationCompat.PRIORITY_LOW);
             nm.notify(NOTIFICATION_ID + 1, b.build());
         } catch (Throwable e) {
             FileLog.e(e);
         }
+    }
+
+    /** Открыть RecGram на экране «Записи звонков». */
+    private static android.app.PendingIntent openRecordingsIntent(Context ctx) {
+        android.content.Intent i = new android.content.Intent(ctx, org.telegram.ui.LaunchActivity.class);
+        i.setAction("org.recgram.OPEN_RECORDINGS");
+        i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        return android.app.PendingIntent.getActivity(ctx, 0x52454302, i,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
     }
 
     private static void hideNotification() {
