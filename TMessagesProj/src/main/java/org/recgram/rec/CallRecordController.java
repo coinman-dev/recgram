@@ -337,7 +337,8 @@ public final class CallRecordController {
             o.put("peer_notified", notified);
             o.put("auto_level", RecGramConfig.isAutoLevel());
             o.put("channels", "mono: me + peer");
-            o.put("codec", f.getName().endsWith(".mp4") ? VideoTap.lastCodec + " + aac mono 64k" : CallRecorder.useOpus() ? "opus/ogg mono 64k" : "aac/mp4 mono 64k");
+            String kb = (RecGramConfig.getAudioBitrate() / 1000) + "k";
+            o.put("codec", f.getName().endsWith(".mp4") ? VideoTap.lastCodec + " + aac mono " + kb : CallRecorder.useOpus() ? "opus/ogg mono " + kb : "aac/mp4 mono " + kb);
             o.put("failed", r.isFailed());
             o.put("sha256", f.exists() ? sha256(f) : "");
             o.put("saved_to", published != null ? published : f.getAbsolutePath());

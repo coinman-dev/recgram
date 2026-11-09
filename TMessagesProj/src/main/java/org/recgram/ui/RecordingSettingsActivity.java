@@ -28,6 +28,7 @@ public class RecordingSettingsActivity extends UniversalFragment {
     private static final int ID_CODEC_HEVC = 40;
     private static final int ID_CODEC_AVC = 41;
     private static final int ID_BITRATE_BASE = 50;
+    private static final int ID_AUDIO_BITRATE_BASE = 60;
 
     @Override
     protected CharSequence getTitle() {
@@ -78,15 +79,26 @@ public class RecordingSettingsActivity extends UniversalFragment {
         items.add(UItem.asCheck(ID_LEVEL, s("Выравнивать громкость голосов", "Even out voice volume")).setChecked(RecGramConfig.isAutoLevel()).setEnabled(allowed));
         boolean red = c != null && c.color() == RecordingRules.Color.RED;
         boolean voiceAllowed = c != null && !"absolute".equals(c.self);
+        boolean forced = RecordingRules.isVoiceNoticeForced();
         items.add(UItem.asCheck(ID_VOICE, s("Голосовое предупреждение", "Voice notice"))
-                .setChecked(RecGramConfig.isVoiceNotice()).setEnabled(voiceAllowed));
+                .setChecked(RecGramConfig.isVoiceNotice() || forced).setEnabled(voiceAllowed && !forced));
         items.add(UItem.asCheck(ID_NOTIFY, s("Сообщать собеседнику о записи", "Tell the other party about recording")).setChecked(RecGramConfig.isNotifyPeer()).setEnabled(allowed));
         items.add(UItem.asShadow(s("Голосовое предупреждение: в начале звонка вы и собеседник слышите сигнал, фразу «Внимание. Этот разговор записывается. Говорите после сигнала» и второй сигнал. Предупреждение тоже попадает в запись. "
-                        + (red ? "В вашей стране запись без согласия запрещена, поэтому запись возможна только с голосовым предупреждением." : ""),
+                        + (red ? "В вашей стране запись без согласия запрещена, поэтому предупреждение обязательно и отключить его нельзя." : ""),
                 "Voice notice: at the start of the call both of you hear a tone, \"Attention. This call is being recorded. Please speak after the tone\" and a second tone. The notice is included in the recording. "
-                        + (red ? "Recording without consent is prohibited in your country, so recording is possible only with the voice notice." : ""))));
+                        + (red ? "Recording without consent is prohibited in your country, so the notice is mandatory and cannot be turned off." : ""))));
         items.add(UItem.asShadow(s("Звонки записываются в Opus, моно, 64 кбит/с — папка Recordings/RecGram, данные звонка внутри файла. Видеозвонки — в MP4, папка Movies/RecGram. Сообщение о записи уходит собеседнику до ответа на звонок.",
                 "Calls are recorded as Opus, mono, 64 kbps in Recordings/RecGram, call data inside the file. Video calls are recorded as MP4 in Movies/RecGram. The recording notice is sent to the other party before the call is answered.")));
+
+        items.add(UItem.asHeader(s("Битрейт аудио", "Audio bitrate")));
+        int ab = RecGramConfig.getAudioBitrate();
+        for (int i = 0; i < RecGramConfig.AUDIO_BITRATES.length; i++) {
+            int v = RecGramConfig.AUDIO_BITRATES[i];
+            items.add(UItem.asRadio(ID_AUDIO_BITRATE_BASE + i, (v / 1000) + s(" кбит/с", " kbps") + (v == 64_000 ? s(" — по умолчанию", " — default") : ""))
+                    .setChecked(v == ab).setEnabled(allowed));
+        }
+        items.add(UItem.asShadow(s("Для речи хватает и 32 кбит/с. 64 кбит/с — запас по качеству, около 480 КБ на минуту разговора.",
+                "Even 32 kbps is enough for speech. 64 kbps gives extra quality, about 480 KB per minute.")));
 
         if (RecGramConfig.isRecordVideo()) {
             boolean hevc = RecGramConfig.isVideoHevc();
@@ -138,7 +150,7 @@ public class RecordingSettingsActivity extends UniversalFragment {
                 RecGramConfig.setRecordVideo(!RecGramConfig.isRecordVideo());
                 break;
             case ID_VOICE: {
-                if (c0() == null || "absolute".equals(c0().self)) return;
+                if (c0() == null || "absolute".equals(c0().self) || RecordingRules.isVoiceNoticeForced()) return;
                 boolean on = !RecGramConfig.isVoiceNotice();
                 RecGramConfig.setVoiceNotice(on);
                 if (on) {
@@ -157,6 +169,12 @@ public class RecordingSettingsActivity extends UniversalFragment {
                 RecGramConfig.setNotifyPeer(!RecGramConfig.isNotifyPeer());
                 break;
             default:
+                int ai = item.id - ID_AUDIO_BITRATE_BASE;
+                if (ai >= 0 && ai < RecGramConfig.AUDIO_BITRATES.length) {
+                    if (!allowed) return;
+                    RecGramConfig.setAudioBitrate(RecGramConfig.AUDIO_BITRATES[ai]);
+                    break;
+                }
                 int bi = item.id - ID_BITRATE_BASE;
                 boolean hevc = RecGramConfig.isVideoHevc();
                 int[] opts = hevc ? RecGramConfig.VIDEO_BITRATES_HEVC : RecGramConfig.VIDEO_BITRATES_AVC;

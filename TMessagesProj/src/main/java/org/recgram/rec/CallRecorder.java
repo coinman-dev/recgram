@@ -219,7 +219,7 @@ public final class CallRecorder {
             if (!opus) {
                 format.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
             }
-            format.setInteger(MediaFormat.KEY_BIT_RATE, 64000);
+            format.setInteger(MediaFormat.KEY_BIT_RATE, org.recgram.RecGramConfig.getAudioBitrate());
             format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384);
             codec = MediaCodec.createEncoderByType(mime);
             codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);

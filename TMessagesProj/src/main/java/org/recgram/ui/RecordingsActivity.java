@@ -141,7 +141,8 @@ public class RecordingsActivity extends UniversalFragment {
         items.add(UItem.asHeader(s("Записей: ", "Recordings: ") + recs.size()));
         for (int i = 0; i < recs.size(); i++) {
             Rec r = recs.get(i);
-            items.add(UItem.asButton(ID_BASE + i, (r.name != null && r.name.endsWith(".mp4") ? "🎥 " : "") + rowTitle(r), duration(r.durationMs)));
+            boolean video = r.name != null && r.name.endsWith(".mp4");
+            items.add(UItem.asButton(ID_BASE + i, rowTitle(r) + (video ? "  🎥" : "  🎙"), duration(r.durationMs)));
         }
         items.add(UItem.asShadow(s("Нажмите на запись, чтобы прослушать, поделиться, посмотреть данные звонка или удалить.",
                 "Tap a recording to play, share, view call data or delete it.")));

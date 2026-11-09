@@ -22,7 +22,8 @@ import java.util.Locale;
 /** Правила записи по странам из assets/recgram/recording_rules.json. */
 public final class RecordingRules {
 
-    public enum Color { GREEN, YELLOW, RED }
+    /** RED — только с голосовым предупреждением; FORBIDDEN — запись запрещена совсем. */
+    public enum Color { GREEN, YELLOW, RED, FORBIDDEN }
 
     public static final class Country {
         public String id, iso, regionRu, regionEn, self, threat, law, noteRu;
@@ -57,8 +58,9 @@ public final class RecordingRules {
             case "intent_misuse":
                 return Color.GREEN;
             case "criminal_prohibited":
-            case "absolute":
                 return Color.RED;
+            case "absolute":
+                return Color.FORBIDDEN;
             default:
                 return Color.YELLOW;
         }
@@ -68,6 +70,7 @@ public final class RecordingRules {
         switch (c) {
             case GREEN: return 0xFF34C759;
             case RED: return 0xFFFF3B30;
+            case FORBIDDEN: return 0xFF8E8E93;
             default: return 0xFFFFB300;
         }
     }
@@ -186,16 +189,20 @@ public final class RecordingRules {
         switch (c.color()) {
             case GREEN: return true;
             case YELLOW: return c.id.equals(RecGramConfig.getAcceptedRiskCountryId());
-            default:
-                // Красная страна: запись возможна только с голосовым предупреждением,
-                // кроме стран, где нужно явное согласие (absolute)
-                return "criminal_prohibited".equals(c.self) && RecGramConfig.isVoiceNotice();
+            case RED: return true; // только с голосовым предупреждением (оно включается принудительно)
+            default: return false;
         }
     }
 
     /** Нужно ли голосовое предупреждение перед записью. */
     public static boolean voiceNoticeRequired() {
         Country c = selected();
-        return RecGramConfig.isVoiceNotice() || (c != null && c.color() == Color.RED);
+        return RecGramConfig.isVoiceNotice() || isVoiceNoticeForced();
+    }
+
+    /** Страна требует голосового предупреждения — отключить его нельзя. */
+    public static boolean isVoiceNoticeForced() {
+        Country c = selected();
+        return c != null && c.color() == Color.RED;
     }
 }
