@@ -107,23 +107,15 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
                 .setChecked(Bypass.isDpiDirect()).setEnabled(!busy && mode != Bypass.DPI_OFF));
         items.add(UItem.asButton(ID_AUTO, busy ? s("Подбираю…", "Selecting…") : s("Подобрать автоматически", "Select automatically")).accent());
         items.add(UItem.asShadow(s(
-                "Оборудование провайдера (DPI) узнаёт прокси по имени сайта в первом пакете. RecGram режет этот пакет так, чтобы DPI не смог его прочитать, а сервер получил всё без изменений.
-"
-                        + "• «Разрез + обратный порядок» — рекомендуется: первая часть приходит позже второй, и сервер получает пакет целиком.
-"
-                        + "• «Разрез пакета» — некоторые прокси-серверы (mtg, mtprotoproxy) могут отвергнуть пакет, пришедший двумя частями.
-"
-                        + "• «Срочный байт» — только для прокси с маскировкой под HTTPS; для остальных соединений вместо него обычный разрез.
-"
+                "Оборудование провайдера (DPI) узнаёт прокси по имени сайта в первом пакете. RecGram режет этот пакет так, чтобы DPI не смог его прочитать, а сервер получил всё без изменений.\n"
+                        + "• «Разрез + обратный порядок» — рекомендуется: первая часть приходит позже второй, и сервер получает пакет целиком.\n"
+                        + "• «Разрез пакета» — некоторые прокси-серверы (mtg, mtprotoproxy) могут отвергнуть пакет, пришедший двумя частями.\n"
+                        + "• «Срочный байт» — только для прокси с маскировкой под HTTPS; для остальных соединений вместо него обычный разрез.\n"
                         + "Флажок «также без маскировки» режет и первый пакет прямого подключения и обычного MTProto-прокси. Автоподбор проверяет все прокси в каждом режиме и оставляет лучший. От блокировки по адресам и для звонков это не помогает — нужен прокси.",
-                "Provider equipment (DPI) recognises a proxy by the site name in the first packet. RecGram splits that packet so DPI cannot read it while the server gets it unchanged.
-"
-                        + "• \"Split + disorder\" is recommended: the first part arrives after the second and the server gets the packet whole.
-"
-                        + "• \"Split packet\": some proxy servers (mtg, mtprotoproxy) may reject a packet that arrives in two parts.
-"
-                        + "• \"OOB byte\": only for proxies disguised as HTTPS; other connections get a plain split instead.
-"
+                "Provider equipment (DPI) recognises a proxy by the site name in the first packet. RecGram splits that packet so DPI cannot read it while the server gets it unchanged.\n"
+                        + "• \"Split + disorder\" is recommended: the first part arrives after the second and the server gets the packet whole.\n"
+                        + "• \"Split packet\": some proxy servers (mtg, mtprotoproxy) may reject a packet that arrives in two parts.\n"
+                        + "• \"OOB byte\": only for proxies disguised as HTTPS; other connections get a plain split instead.\n"
                         + "\"Also without disguise\" also splits the first packet of direct connections and plain MTProto proxies. Automatic selection checks all proxies in each mode and keeps the best. This does not help against address blocking or for calls — a proxy is needed.")));
     }
 
