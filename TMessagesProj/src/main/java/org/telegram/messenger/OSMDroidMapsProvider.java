@@ -39,6 +39,8 @@ import androidx.core.util.Consumer;
 
 import org.osmdroid.api.IMapController;
 import org.osmdroid.events.MapListener;
+import org.osmdroid.tileprovider.MapTileProviderBasic;
+import org.osmdroid.views.overlay.TilesOverlay;
 import org.osmdroid.events.ScrollEvent;
 import org.osmdroid.events.ZoomEvent;
 import org.osmdroid.tileprovider.tilesource.ITileSource;
@@ -253,31 +255,50 @@ public class OSMDroidMapsProvider implements IMapsProvider {
                     mapView.setTileSource(TileSourceFactory.MAPNIK);
                     break;
                 }
-                case MAP_TYPE_SATELLITE: {
-                    // Create a custom tile source
-                    ITileSource tileSource = new XYTileSource(
-                        "Wikimedia", 0, 19,
-                        256, ".png",
-                        new String[]{"https://maps.wikimedia.org/osm-intl/"},
-                        "© OpenStreetMap contributors");
-                    attributionOverlay.setText(Html.fromHtml("© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"));
-                    mapView.setTileSource(tileSource);
+                case MAP_TYPE_SATELLITE:
+                case MAP_TYPE_HYBRID: {
+                    // RecGram: настоящие спутниковые снимки Esri World Imagery (Wikimedia закрыт для сторонних приложений);
+                    // в гибриде поверх — подписи и границы Esri
+                    mapView.setTileSource(esri("Esri World Imagery", "World_Imagery", 19));
+                    if (mapType == MAP_TYPE_HYBRID) {
+                        setLabels(true);
+                    }
+                    attributionOverlay.setText(Html.fromHtml("Tiles © <a href=\"https://www.esri.com\">Esri</a> — Esri, Maxar, Earthstar Geographics, GIS User Community"));
                     break;
                 }
-                case MAP_TYPE_HYBRID: {
-                    ITileSource tileSource = new XYTileSource(
-                        "Carto Dark", 0, 20,
-                        256, ".png",
-                        new String[]{
-                            "https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/",
-                            "https://cartodb-basemaps-b.global.ssl.fastly.net/dark_all/",
-                            "https://cartodb-basemaps-c.global.ssl.fastly.net/dark_all/",
-                            "https://cartodb-basemaps-d.global.ssl.fastly.net/dark_all/"},
-                        "© OpenStreetMap contributors, © CARTO");
-                    attributionOverlay.setText(Html.fromHtml("© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, © <a href=\"https://carto.com/attributions\">CARTO</a>"));
-                    mapView.setTileSource(tileSource);
-                }
             }
+            if (mapType != MAP_TYPE_HYBRID) {
+                setLabels(false);
+            }
+            mapView.invalidate();
+        }
+
+        private TilesOverlay labelsOverlay;
+
+        private void setLabels(boolean show) {
+            if (show && labelsOverlay == null) {
+                MapTileProviderBasic provider = new MapTileProviderBasic(mapView.getContext(), esri("Esri Labels", "Reference/World_Boundaries_and_Places", 19));
+                labelsOverlay = new TilesOverlay(provider, mapView.getContext());
+                labelsOverlay.setLoadingBackgroundColor(Color.TRANSPARENT);
+                labelsOverlay.setLoadingLineColor(Color.TRANSPARENT);
+                mapView.getOverlayManager().add(0, labelsOverlay);
+            } else if (!show && labelsOverlay != null) {
+                mapView.getOverlayManager().remove(labelsOverlay);
+                labelsOverlay.onDetach(mapView);
+                labelsOverlay = null;
+            }
+        }
+
+        private static ITileSource esri(String name, String service, int maxZoom) {
+            return new org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase(name, 0, maxZoom, 256, "",
+                    new String[]{"https://server.arcgisonline.com/ArcGIS/rest/services/" + service + "/MapServer/tile/"},
+                    "© Esri") {
+                @Override
+                public String getTileURLString(long index) {
+                    return getBaseUrl() + org.osmdroid.util.MapTileIndex.getZoom(index) + "/"
+                            + org.osmdroid.util.MapTileIndex.getY(index) + "/" + org.osmdroid.util.MapTileIndex.getX(index);
+                }
+            };
         }
 
         @Override
