@@ -50,12 +50,12 @@ public final class RecGramConfig {
     public static void setVideoBitrate(boolean hevc, int bps) {
         prefs().edit().putInt(hevc ? "video_bitrate_hevc" : "video_bitrate_avc", bps).apply();
     }
-    /** Битрейт аудиозаписи: 32 / 48 / 64 кбит/с (по умолчанию 64). */
+    /** Битрейт аудиозаписи: 32 / 48 / 64 кбит/с (по умолчанию 48). */
     public static final int[] AUDIO_BITRATES = {32_000, 48_000, 64_000};
     public static int getAudioBitrate() {
-        int v = prefs().getInt("audio_bitrate", 64_000);
+        int v = prefs().getInt("audio_bitrate", 48_000);
         for (int o : AUDIO_BITRATES) if (o == v) return v;
-        return 64_000;
+        return 48_000;
     }
     public static void setAudioBitrate(int bps) { prefs().edit().putInt("audio_bitrate", bps).apply(); }
     /** Голосовое предупреждение собеседнику в начале звонка (в красных странах — обязательно). */

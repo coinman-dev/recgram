@@ -95,10 +95,8 @@ public class CountrySelectActivity extends UniversalFragment {
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         String selected = RecGramConfig.getCountryId();
         items.add(UItem.asShadow(s(
-                "От страны зависит, можно ли записывать звонки.\n\n🟢 Зелёный — можно\n🟡 Жёлтый — непонятно или есть риск, решаете вы\n🔴 Красный — только с голосовым предупреждением в начале звонка
-⚫ Серый — нельзя, запись не работает",
-                "Your country decides whether calls can be recorded.\n\n🟢 Green — allowed\n🟡 Yellow — unclear or risky, you decide\n🔴 Red — only with a voice notice at the start of the call
-⚫ Grey — not allowed, recording is off")));
+                "От страны зависит, можно ли записывать звонки.\n\n🟢 Зелёный — можно\n🟡 Жёлтый — непонятно или есть риск, решаете вы\n🔴 Красный — только с голосовым предупреждением в начале звонка\n⚫ Серый — нельзя, запись не работает",
+                "Your country decides whether calls can be recorded.\n\n🟢 Green — allowed\n🟡 Yellow — unclear or risky, you decide\n🔴 Red — only with a voice notice at the start of the call\n⚫ Grey — not allowed, recording is off")));
         if (!detected.isEmpty()) {
             items.add(UItem.asHeader(s("Определено по сети", "Detected from network")));
             for (int i = 0; i < detected.size(); i++) {

@@ -87,18 +87,18 @@ public class RecordingSettingsActivity extends UniversalFragment {
                         + (red ? "В вашей стране запись без согласия запрещена, поэтому предупреждение обязательно и отключить его нельзя." : ""),
                 "Voice notice: at the start of the call both of you hear a tone, \"Attention. This call is being recorded. Please speak after the tone\" and a second tone. The notice is included in the recording. "
                         + (red ? "Recording without consent is prohibited in your country, so the notice is mandatory and cannot be turned off." : ""))));
-        items.add(UItem.asShadow(s("Звонки записываются в Opus, моно, 64 кбит/с — папка Recordings/RecGram, данные звонка внутри файла. Видеозвонки — в MP4, папка Movies/RecGram. Сообщение о записи уходит собеседнику до ответа на звонок.",
-                "Calls are recorded as Opus, mono, 64 kbps in Recordings/RecGram, call data inside the file. Video calls are recorded as MP4 in Movies/RecGram. The recording notice is sent to the other party before the call is answered.")));
+        items.add(UItem.asShadow(s("Звонки записываются в Opus, моно — папка Recordings/RecGram, данные звонка внутри файла. Видеозвонки — в MP4, папка Movies/RecGram. Сообщение о записи уходит собеседнику до ответа на звонок.",
+                "Calls are recorded as Opus, mono in Recordings/RecGram, call data inside the file. Video calls are recorded as MP4 in Movies/RecGram. The recording notice is sent to the other party before the call is answered.")));
 
         items.add(UItem.asHeader(s("Битрейт аудио", "Audio bitrate")));
         int ab = RecGramConfig.getAudioBitrate();
         for (int i = 0; i < RecGramConfig.AUDIO_BITRATES.length; i++) {
             int v = RecGramConfig.AUDIO_BITRATES[i];
-            items.add(UItem.asRadio(ID_AUDIO_BITRATE_BASE + i, (v / 1000) + s(" кбит/с", " kbps") + (v == 64_000 ? s(" — по умолчанию", " — default") : ""))
+            items.add(UItem.asRadio(ID_AUDIO_BITRATE_BASE + i, (v / 1000) + s(" кбит/с", " kbps") + (v == 48_000 ? s(" — по умолчанию", " — default") : ""))
                     .setChecked(v == ab).setEnabled(allowed));
         }
-        items.add(UItem.asShadow(s("Для речи хватает и 32 кбит/с. 64 кбит/с — запас по качеству, около 480 КБ на минуту разговора.",
-                "Even 32 kbps is enough for speech. 64 kbps gives extra quality, about 480 KB per minute.")));
+        items.add(UItem.asShadow(s("Для речи хватает и 32 кбит/с. 48 кбит/с — около 360 КБ на минуту разговора, 64 кбит/с — около 480 КБ.",
+                "Even 32 kbps is enough for speech. 48 kbps is about 360 KB per minute, 64 kbps about 480 KB.")));
 
         if (RecGramConfig.isRecordVideo()) {
             boolean hevc = RecGramConfig.isVideoHevc();
