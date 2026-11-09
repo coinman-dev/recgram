@@ -84,6 +84,8 @@ jobs:
           [ "$SHA" = "$EXPECTED" ] || { echo "::error::APK подписан не ключом RecGram"; exit 1; }
           NAME="RecGram-${GITHUB_REF_NAME//\//-}.apk"
           cp "$APK" "$NAME"
+          cp "$APK" RecGram.apk  # постоянное имя: ссылка releases/latest/download/RecGram.apk в README
+          sha256sum "$NAME" RecGram.apk > SHA256SUMS.txt
           echo "APK_NAME=$NAME" >> "$GITHUB_ENV"
 
       - name: Артефакт (ручной запуск)
@@ -101,4 +103,4 @@ jobs:
         run: |
           PRE=""
           case "$GITHUB_REF_NAME" in *-*) PRE="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" "$APK_NAME" $PRE --title "RecGram $GITHUB_REF_NAME" --generate-notes
+          gh release create "$GITHUB_REF_NAME" "$APK_NAME" RecGram.apk SHA256SUMS.txt $PRE --title "RecGram $GITHUB_REF_NAME" --generate-notes

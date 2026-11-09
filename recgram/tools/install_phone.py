@@ -92,19 +92,21 @@ def watch(stop_at, done):
         time.sleep(1)
 
 
-def installed_matches(apk, package="app.recgram.beta"):
+def installed_matches(apk, packages=("app.recgram", "app.recgram.beta")):
     import hashlib
-    try:
-        path = ui.adb("shell", "pm", "path", package).strip().splitlines()[0].replace("package:", "").strip()
-        remote = ui.adb("shell", "sha256sum", path).split()[0]
-        local = hashlib.sha256(apk.read_bytes()).hexdigest()
-        return remote == local
-    except Exception:
-        return False
+    local = hashlib.sha256(apk.read_bytes()).hexdigest()
+    for package in packages:
+        try:
+            path = ui.adb("shell", "pm", "path", package).strip().splitlines()[0].replace("package:", "").strip()
+            if ui.adb("shell", "sha256sum", path).split()[0] == local:
+                return True
+        except Exception:
+            pass
+    return False
 
 
 def main():
-    apk = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "builds" / "RecGram-dev-latest-debug.apk"
+    apk = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "builds" / "RecGram-release-arm64.apk"
     if not apk.exists():
         sys.exit(f"нет файла {apk}")
     print(f"Устанавливаю {apk.name}")
