@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- RecGram: заставка при запуске (Android 12+) — та же иконка: красный ободок, синий круг, облачко с точкой записи.
+     Значок заставки 240dp, видимая часть — круг 160dp (r=36 из 108). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="240dp" android:height="240dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFF0000" android:pathData="M54,18a36,36 0 1,1 0,72a36,36 0 1,1 0,-72z" />
+    <path android:pathData="M54,23a31,31 0 1,1 0,62a31,31 0 1,1 0,-62z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="54" android:startY="85" android:endX="54" android:endY="23"
+                android:startColor="#FF289AD1" android:endColor="#FF38AEEB" />
+        </aapt:attr>
+    </path>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M45,37h18a10,10 0 0 1 10,10v8a10,10 0 0 1 -10,10h-13l-9,7.5c-1,0.8 -2.3,0 -2,-1.2l1.6,-7.2a10,10 0 0 1 -5.6,-9v-8a10,10 0 0 1 10,-10z" />
+    <path android:fillColor="#FFFF0000" android:pathData="M54,44.5a6.5,6.5 0 1 1 0,13a6.5,6.5 0 1 1 0,-13z" />
+</vector>

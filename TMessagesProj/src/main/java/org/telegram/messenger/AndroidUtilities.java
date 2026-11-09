@@ -1863,6 +1863,9 @@ public class AndroidUtilities {
 
     public static boolean isMapsInstalled(BaseFragment fragment) {
         String pkg = ApplicationLoader.getMapsProvider().getMapsAppPackageName();
+        if (pkg == null) {
+            return true; // RecGram: карты OpenStreetMap не требуют отдельного приложения
+        }
         try {
             ApplicationLoader.applicationContext.getPackageManager().getApplicationInfo(pkg, 0);
             return true;
