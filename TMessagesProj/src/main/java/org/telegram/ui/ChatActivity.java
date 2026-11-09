@@ -1678,6 +1678,7 @@ public class ChatActivity extends BaseFragment implements
     private final static int chat_menu_search = -1;
     private final static int chat_menu_options = -2;
     private final static int clear_history = 15;
+    private final static int recgram_export = 0x52450; // RecGram: экспорт чата
     private final static int delete_chat = 16;
     private final static int share_contact = 17;
     private final static int mute = 18;
@@ -3910,6 +3911,8 @@ public class ChatActivity extends BaseFragment implements
                     }
                 } else if (id == mute) {
                     toggleMute(false);
+                } else if (id == recgram_export) { // RecGram
+                    presentFragment(new org.recgram.export.ExportChatActivity(getDialogId()));
                 } else if (id == add_shortcut) {
                     try {
                         getMediaDataController().installShortcut(currentUser.id, MediaDataController.SHORTCUT_TYPE_USER_OR_CHAT);
@@ -4414,6 +4417,9 @@ public class ChatActivity extends BaseFragment implements
             }
             if (currentUser != null && currentUser.self && getDialogId() != UserObject.VERIFY) {
                 headerItem.lazilyAddSubItem(add_shortcut, R.drawable.msg_home, LocaleController.getString(R.string.AddShortcut));
+            }
+            if (!isTopic && currentEncryptedChat == null && getDialogId() != 0) { // RecGram: экспорт чата/канала
+                headerItem.lazilyAddSubItem(recgram_export, R.drawable.msg_download, org.recgram.RLocale.s("Экспорт чата", "Export chat"));
             }
             if (!isTopic && !ChatObject.isMonoForum(currentChat)) {
                 clearHistoryItem = headerItem.lazilyAddSubItem(clear_history, R.drawable.msg_clear,
