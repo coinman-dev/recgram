@@ -38,16 +38,12 @@ public class ApiKeyActivity extends UniversalFragment {
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         boolean custom = ApiKeys.isCustom();
         items.add(UItem.asHeader(s("Сейчас используется", "Currently used")));
-        items.add(UItem.asButton(0, custom ? s("Свой", "Your own") : s("Встроенный", "Built-in"),
-                "api_id " + ApiKeys.currentId()));
+        items.add(UItem.asButton(0, s("Ваш ключ", "Your key"), "api_id " + ApiKeys.currentId()));
         items.add(UItem.asShadow(s(
-                "Встроенный ключ общий для всех пользователей RecGram. Если Telegram его заблокирует, приложение перестанет работать у всех, а со своим ключом — продолжит. Свой ключ нужен и для сохранения исчезающих медиа.",
-                "The built-in key is shared by all RecGram users. If Telegram blocks it, the app stops working for everyone; with your own key it keeps working. Your own key is also required to save disappearing media.")));
+                "У RecGram нет общего ключа: каждый пользователь работает со своим, полученным на my.telegram.org.",
+                "RecGram has no shared key: every user works with their own key from my.telegram.org.")));
 
-        items.add(UItem.asButton(ID_SET, s("Ввести свой ключ", "Enter your own key")).accent());
-        if (custom) {
-            items.add(UItem.asButton(ID_RESET, s("Вернуть встроенный ключ", "Use the built-in key")).red());
-        }
+        items.add(UItem.asButton(ID_SET, s("Сменить ключ", "Change key")).accent());
         items.add(UItem.asShadow(s("После смены ключа приложение перезапустится.", "The app restarts after the key is changed.")));
 
         items.add(UItem.asHeader(s("Как получить свой ключ", "How to get your own key")));

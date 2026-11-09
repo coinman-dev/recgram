@@ -12,7 +12,7 @@ import org.telegram.messenger.BuildConfig;
 import org.telegram.messenger.BuildVars;
 
 /**
- * Встроенный API-ключ сборки или свой ключ пользователя.
+ * Свой API-ключ пользователя. Встроенного ключа у RecGram нет: каждый вводит свой при первом запуске.
  * Ключ передаётся в сетевой модуль при запуске, поэтому после смены нужен перезапуск.
  */
 public final class ApiKeys {
@@ -26,6 +26,11 @@ public final class ApiKeys {
 
     public static boolean hasBuiltIn() {
         return BuildConfig.RECGRAM_API_ID != 0 && !TextUtils.isEmpty(BuildConfig.RECGRAM_API_HASH);
+    }
+
+    /** Ключ введён — можно входить в Telegram. */
+    public static boolean isConfigured() {
+        return isCustom();
     }
 
     /** Используется ли свой ключ пользователя. */
@@ -54,8 +59,8 @@ public final class ApiKeys {
                 BuildVars.APP_ID = getCustomId();
                 BuildVars.APP_HASH = prefs().getString("custom_api_hash", "");
             } else {
-                BuildVars.APP_ID = BuildConfig.RECGRAM_API_ID;
-                BuildVars.APP_HASH = BuildConfig.RECGRAM_API_HASH;
+                BuildVars.APP_ID = 0;
+                BuildVars.APP_HASH = "";
             }
         } catch (Throwable ignore) {
         }

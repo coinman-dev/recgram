@@ -1106,6 +1106,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     }
 
     private BaseFragment getClientNotActivatedFragment() {
+        if (!org.recgram.ApiKeys.isConfigured()) { // RecGram: сначала свой API-ключ
+            return new org.recgram.ui.ApiKeySetupActivity();
+        }
         if (LoginActivity.loadCurrentState(false, currentAccount).getInt("currentViewNum", 0) != 0) {
             return new LoginActivity();
         }
