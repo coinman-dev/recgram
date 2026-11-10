@@ -163,7 +163,16 @@ public final class Vless {
 
     /** Telegram сейчас ходит через наш локальный SOCKS5. */
     public static boolean isActive() {
-        return isEnabled() && SharedConfig.isProxyEnabled() && SharedConfig.currentProxy != null && isLocal(SharedConfig.currentProxy.settings);
+        return isEnabled() && localProxyInUse();
+    }
+
+    /**
+     * Прокси Telegram сейчас — наш локальный SOCKS5. Читаем прямо из настроек: SharedConfig.currentProxy
+     * до загрузки списка прокси пуст (при запуске приложения), по нему VLESS ошибочно выключался.
+     */
+    private static boolean localProxyInUse() {
+        SharedPreferences p = MessagesController.getGlobalMainSettings();
+        return p.getBoolean("proxy_enabled", false) && isLocal(ProxySettings.fromSharedPreferences(p));
     }
 
     public static boolean isLocal(ProxySettings s) {
@@ -508,8 +517,8 @@ public final class Vless {
     }
 
     private static void useLocalProxy(ProxySettings s) {
-        ProxySettings cur = SharedConfig.currentProxy != null ? SharedConfig.currentProxy.settings : null;
-        if (SharedConfig.isProxyEnabled() && s.equals(cur)) {
+        SharedPreferences mp = MessagesController.getGlobalMainSettings();
+        if (mp.getBoolean("proxy_enabled", false) && s.equals(ProxySettings.fromSharedPreferences(mp))) {
             reconnect(); // уже настроен — просто не ждать паузы между попытками
             return;
         }
@@ -551,8 +560,7 @@ public final class Vless {
             @Override
             public void didReceivedNotification(int id, int account, Object... args) {
                 if (!isEnabled() || !ready) return;
-                ProxySettings cur = SharedConfig.currentProxy != null ? SharedConfig.currentProxy.settings : null;
-                if (!SharedConfig.isProxyEnabled() || !isLocal(cur)) {
+                if (!localProxyInUse()) {
                     prefs().edit().putBoolean("enabled", false).apply();
                     stop();
                     removeLocalEntries();

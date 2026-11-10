@@ -47,7 +47,7 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
     private static final int ID_PROXY_LIST = 1, ID_IMPORT = 2, ID_SUBSCRIPTION = 3, ID_SUB_UPDATE = 4, ID_BEST = 5;
     private static final int ID_MODE_BASE = 10;
     private static final int ID_DIRECT = 20, ID_AUTO = 21;
-    private static final int ID_VLESS_FILE = 40, ID_VLESS_CHECK = 41, ID_VLESS_OFF = 42, ID_VLESS_LOG = 43, ID_VLESS_BASE = 100;
+    private static final int ID_VLESS_FILE = 40, ID_VLESS_CHECK = 41, ID_VLESS_OFF = 42, ID_VLESS_LOG = 43, ID_VLESS_STATE = 44, ID_VLESS_BASE = 100;
     private static final int REQ_VLESS_FILE = 7301;
 
     private boolean vlessChecking;
@@ -244,28 +244,31 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
         } else {
             state = s("Выключен", "Off");
         }
-        items.add(UItem.asButton(ID_VLESS_LOG, state, s("журнал", "log")));
+        items.add(UItem.asButton(ID_VLESS_STATE, state));
         for (int i = 0; i < vlessList.size(); i++) {
             VlessConfig c = vlessList.get(i);
             boolean on = enabled && c.id.equals(sel);
             // пинг первым: длинное значение справа обрезается
             String ping = c.ping > 0 ? c.ping + s(" мс · ", " ms · ") : c.ping == 0 ? s("нет связи · ", "no link · ") : "";
-            items.add(UItem.asButton(ID_VLESS_BASE + i, (on ? "● " : "") + c.name, ping + c.summary().replaceFirst("^vless · ", "")));
+            // имя сверху, пинг и тип строкой ниже — обе строки на всю ширину
+            items.add(UItem.asRadio2(ID_VLESS_BASE + i, c.name, ping + c.summary().replaceFirst("^vless · ", "")).setChecked(on));
         }
-        items.add(UItem.asButton(ID_VLESS_FILE, s("Импорт из файла", "Import from file")));
+        // одна строка: слева «Импорт из файла», справа «Сканировать QR» (выбор — по месту нажатия)
+        items.add(UItem.asButton(ID_VLESS_FILE, s("Импорт из файла", "Import from file"), s("Сканировать QR", "Scan QR")));
         if (!vlessList.isEmpty()) {
             items.add(UItem.asButton(ID_VLESS_CHECK, vlessChecking ? "⏳ " + s("Проверяю серверы…", "Checking servers…")
                     : s("Проверить серверы", "Check servers")).accent());
         }
+        items.add(UItem.asButton(ID_VLESS_LOG, s("Журнал Xray", "Xray log")));
         if (enabled) {
             items.add(UItem.asButton(ID_VLESS_OFF, s("Выключить VLESS", "Turn VLESS off")).red());
         }
         items.add(UItem.asShadow((vlessStatus != null ? vlessStatus + "\n\n" : "") + s(
                 "Свой зарубежный сервер VLESS (Reality, xhttp, ws, gRPC…) — самый надёжный обход, если Telegram блокируют по адресам. RecGram запускает Xray внутри себя: через сервер идёт только трафик RecGram, системный VPN не нужен.\n"
-                        + "Добавить сервер: скопируйте ссылку vless:// (в v2RayTun/v2rayNG — «Поделиться») и нажмите «Импорт из буфера обмена» выше, либо выберите файл — JSON-конфиг Xray или shared_preferences.json из v2RayTun. Подписка выше тоже понимает ссылки vless://.\n"
+                        + "Добавить сервер: скопируйте ссылку vless:// (в v2RayTun/v2rayNG — «Поделиться») и нажмите «Импорт из буфера обмена» выше, отсканируйте QR-код сервера либо выберите файл — JSON-конфиг Xray или shared_preferences.json из v2RayTun. Подписка выше тоже понимает ссылки vless://.\n"
                         + "Нажмите на сервер, чтобы включить, переименовать или удалить. Звонки Telegram через прокси не идут.",
                 "Your own VLESS server abroad (Reality, xhttp, ws, gRPC…) is the most reliable bypass when Telegram is blocked by address. RecGram runs Xray inside itself: only RecGram traffic goes through the server, no system VPN is needed.\n"
-                        + "To add a server, copy a vless:// link (\"Share\" in v2RayTun/v2rayNG) and tap \"Import from clipboard\" above, or pick a file: an Xray JSON config or shared_preferences.json from v2RayTun. The subscription above also understands vless:// links.\n"
+                        + "To add a server, copy a vless:// link (\"Share\" in v2RayTun/v2rayNG) and tap \"Import from clipboard\" above, scan the server QR code, or pick a file: an Xray JSON config or shared_preferences.json from v2RayTun. The subscription above also understands vless:// links.\n"
                         + "Tap a server to turn it on, rename or delete it. Telegram calls do not go through proxies.")));
     }
 
@@ -337,6 +340,26 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
         showDialog(b.create());
     }
 
+    /** QR со ссылкой vless:// (или tg://proxy) — встроенный сканер Telegram. */
+    private void scanQr(Context ctx) {
+        if (android.os.Build.VERSION.SDK_INT >= 23
+                && ctx.checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            getParentActivity().requestPermissions(new String[]{android.Manifest.permission.CAMERA}, 34);
+            Toast.makeText(ctx, s("Разрешите доступ к камере и нажмите ещё раз", "Allow camera access and tap again"), Toast.LENGTH_LONG).show();
+            return;
+        }
+        org.telegram.ui.CameraScanActivity.showAsSheet(this, false, org.telegram.ui.CameraScanActivity.TYPE_QR,
+                new org.telegram.ui.CameraScanActivity.CameraScanActivityDelegate() {
+                    @Override
+                    public void didFindQr(String text) {
+                        int n = Bypass.importLinks(VlessConfig.maybeBase64(text));
+                        vlessStatus = n > 0 ? s("Добавлено из QR: ", "Added from QR: ") + n
+                                : s("В QR-коде нет новой ссылки vless:// или прокси.", "The QR code has no new vless:// or proxy link.");
+                        update();
+                    }
+                });
+    }
+
     private void showVlessLog(Context ctx) {
         String log = Vless.logText();
         AlertDialog.Builder b = new AlertDialog.Builder(ctx);
@@ -394,7 +417,7 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             if (!vlessStarting) vlessMenu(ctx, vlessList.get(id - ID_VLESS_BASE));
             return;
         }
-        if (id == ID_VLESS_LOG) {
+        if (id == ID_VLESS_LOG || id == ID_VLESS_STATE) {
             showVlessLog(ctx);
             return;
         }
@@ -402,6 +425,10 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             Vless.disable();
             vlessStatus = null;
             update();
+            return;
+        }
+        if (id == ID_VLESS_FILE && view != null && x > view.getWidth() / 2f) {
+            scanQr(ctx);
             return;
         }
         if (id == ID_VLESS_FILE) {
