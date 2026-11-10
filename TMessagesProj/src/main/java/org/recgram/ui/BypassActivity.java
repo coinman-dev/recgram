@@ -271,8 +271,8 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             // имя сверху, пинг и тип строкой ниже — обе строки на всю ширину
             items.add(UItem.asRadio2(ID_VLESS_BASE + i, c.name, ping + info).setChecked(on));
         }
-        // одна строка: слева «Импорт из файла», справа «Сканировать QR» (выбор — по месту нажатия)
-        items.add(UItem.asButton(ID_VLESS_FILE, s("Импорт из файла", "Import from file"), s("Сканировать QR", "Scan QR")));
+        // одна строка: слева «Импортировать настройки» (файл или буфер обмена), справа «Сканировать QR» (выбор — по месту нажатия)
+        items.add(UItem.asButton(ID_VLESS_FILE, s("Импортировать настройки", "Import settings"), s("Сканировать QR", "Scan QR")));
         if (!vlessList.isEmpty()) {
             items.add(UItem.asButton(ID_VLESS_CHECK, vlessChecking ? "⏳ " + s("Проверяю серверы…", "Checking servers…")
                     : s("Проверить серверы", "Check servers")).accent());
@@ -283,13 +283,36 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
         }
         items.add(UItem.asShadow((vlessStatus != null ? vlessStatus + "\n\n" : "") + s(
                 "Свой зарубежный сервер — самый надёжный обход, если Telegram блокируют по адресам. RecGram запускает туннель внутри себя: через сервер идёт только трафик RecGram, системный VPN не нужен. Если VPN на телефоне уже включён, туннель ждёт и включается сам, когда VPN выключат.\n"
-                        + "VLESS (Reality, xhttp, ws, gRPC…): скопируйте ссылку vless:// (в v2RayTun/v2rayNG — «Поделиться») и нажмите «Импорт из буфера обмена» выше, отсканируйте QR-код либо выберите файл — JSON-конфиг Xray или shared_preferences.json из v2RayTun.\n"
+                        + "VLESS (Reality, xhttp, ws, gRPC…): скопируйте ссылку vless:// (в v2RayTun/v2rayNG — «Поделиться») и нажмите «Импортировать настройки» → «Вставить из буфера обмена», отсканируйте QR-код либо выберите файл — JSON-конфиг Xray или shared_preferences.json из v2RayTun.\n"
                         + "AmneziaWG и WireGuard: файл .conf (в AmneziaWG — «Экспорт» туннеля), его текст или ссылка vpn:// из Amnezia — из буфера обмена, файлом или QR-кодом.\n"
                         + "Нажмите на сервер, чтобы включить, переименовать или удалить. Звонки Telegram через прокси не идут.",
                 "Your own server abroad is the most reliable bypass when Telegram is blocked by address. RecGram runs the tunnel inside itself: only RecGram traffic goes through the server, no system VPN is needed. If a VPN is already on on the phone, the tunnel waits and starts by itself when the VPN is turned off.\n"
-                        + "VLESS (Reality, xhttp, ws, gRPC…): copy a vless:// link (\"Share\" in v2RayTun/v2rayNG) and tap \"Import from clipboard\" above, scan the QR code, or pick a file: an Xray JSON config or shared_preferences.json from v2RayTun.\n"
+                        + "VLESS (Reality, xhttp, ws, gRPC…): copy a vless:// link (\"Share\" in v2RayTun/v2rayNG) and tap \"Import settings\" → \"Paste from clipboard\", scan the QR code, or pick a file: an Xray JSON config or shared_preferences.json from v2RayTun.\n"
                         + "AmneziaWG and WireGuard: a .conf file (\"Export\" in AmneziaWG), its text or a vpn:// link from Amnezia — from the clipboard, a file or a QR code.\n"
                         + "Tap a server to turn it on, rename or delete it. Telegram calls do not go through proxies.")));
+    }
+
+    /** Файл с настройками сервера: .conf AmneziaWG, JSON Xray, shared_preferences.json v2RayTun, список ссылок. */
+    private void pickVlessFile(Context ctx) {
+        android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT);
+        i.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+        i.setType("*/*");
+        try {
+            startActivityForResult(i, REQ_VLESS_FILE);
+        } catch (Throwable e) {
+            Toast.makeText(ctx, s("Нет приложения для выбора файла", "No file picker app"), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** Ссылки vless://, vpn://, текст .conf или JSON из буфера обмена. */
+    private void pasteVless(Context ctx) {
+        ClipboardManager cm = (ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = cm != null ? cm.getPrimaryClip() : null;
+        CharSequence text = clip != null && clip.getItemCount() > 0 ? clip.getItemAt(0).coerceToText(ctx) : null;
+        int n = Bypass.importLinks(text == null ? null : VlessConfig.maybeBase64(text.toString()));
+        vlessStatus = n > 0 ? s("Добавлено из буфера обмена: ", "Added from the clipboard: ") + n
+                : s("В буфере обмена нет новых серверов VLESS/AmneziaWG или прокси.", "No new VLESS/AmneziaWG servers or proxies in the clipboard.");
+        update();
     }
 
     private void vlessMenu(Context ctx, VlessConfig c) {
@@ -466,14 +489,19 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             return;
         }
         if (id == ID_VLESS_FILE) {
-            android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT);
-            i.addCategory(android.content.Intent.CATEGORY_OPENABLE);
-            i.setType("*/*");
-            try {
-                startActivityForResult(i, REQ_VLESS_FILE);
-            } catch (Throwable e) {
-                Toast.makeText(ctx, s("Нет приложения для выбора файла", "No file picker app"), Toast.LENGTH_SHORT).show();
-            }
+            AlertDialog.Builder b = new AlertDialog.Builder(ctx);
+            b.setTitle(s("Импортировать настройки", "Import settings"));
+            b.setItems(new CharSequence[]{
+                    s("Импортировать из файла", "Import from file"),
+                    s("Вставить из буфера обмена", "Paste from clipboard")
+            }, (d, which) -> {
+                if (which == 0) {
+                    pickVlessFile(ctx);
+                } else {
+                    pasteVless(ctx);
+                }
+            });
+            showDialog(b.create());
             return;
         }
         if (id == ID_VLESS_CHECK) {
