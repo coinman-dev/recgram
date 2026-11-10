@@ -109,6 +109,43 @@ public final class ApiKeys {
         return true;
     }
 
+    /**
+     * Сервер Telegram сам завершил сессию (AUTH_KEY_UNREGISTERED, SESSION_REVOKED и т. п.), а не
+     * пользователь нажал «Выйти». Запоминаем, чтобы на экране входа объяснить, что произошло.
+     */
+    public static void markRemoteLogout() {
+        prefs().edit().putLong("remote_logout", System.currentTimeMillis()).commit();
+    }
+
+    /**
+     * На экране входа: если до этого сервер завершил сессию — окно с объяснением. Причин может быть
+     * несколько (сессию завершили на другом устройстве, аккаунт ограничен, ключ заблокирован),
+     * Telegram не сообщает, какая именно.
+     */
+    public static void showRemoteLogoutNotice(org.telegram.ui.ActionBar.BaseFragment fragment) {
+        long at = prefs().getLong("remote_logout", 0);
+        if (at == 0 || fragment == null || fragment.getParentActivity() == null) {
+            return;
+        }
+        prefs().edit().remove("remote_logout").apply();
+        if (System.currentTimeMillis() - at > 7L * 24 * 3600 * 1000) {
+            return; // давно — уже неактуально
+        }
+        org.telegram.ui.ActionBar.AlertDialog.Builder b = new org.telegram.ui.ActionBar.AlertDialog.Builder(fragment.getParentActivity());
+        b.setTitle(RLocale.s("Telegram завершил сессию", "Telegram ended the session"));
+        b.setMessage(RLocale.s(
+                "Вы вышли из аккаунта не сами: сервер Telegram завершил эту сессию. Так бывает, если её закрыли на другом устройстве (Настройки → Устройства), если Telegram ограничил аккаунт или заблокировал API-ключ (api_id " + getCustomId() + ").\n\n"
+                        + "Попробуйте войти снова. Если при входе появится «Неверный API-ключ» — создайте новый ключ на my.telegram.org → API development tools и введите его.",
+                "You did not log out yourself: the Telegram server ended this session. This happens when it was terminated on another device (Settings → Devices), or when Telegram restricted the account or blocked the API key (api_id " + getCustomId() + ").\n\n"
+                        + "Try to log in again. If \"Invalid API key\" appears, create a new key at my.telegram.org → API development tools and enter it."));
+        b.setPositiveButton(RLocale.s("Войти снова", "Log in again"), null);
+        b.setNegativeButton(RLocale.s("Ввести другой ключ", "Enter another key"), (d, w) -> {
+            clearCustom();
+            restartApp();
+        });
+        fragment.showDialog(b.create());
+    }
+
     /** Перезапуск приложения, чтобы новый ключ подхватился сетевым модулем. */
     public static void restartApp() {
         // Будильник с PendingIntent на Android 10+ запускает процесс, но не открывает окно из фона.

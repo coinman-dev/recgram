@@ -953,6 +953,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
         if (fragmentView != null) {
             fragmentView.requestLayout();
         }
+        org.recgram.ApiKeys.showRemoteLogoutNotice(this); // RecGram: сервер завершил сессию — объяснить
         try {
             if (currentViewNum >= VIEW_CODE_MESSAGE && currentViewNum <= VIEW_CODE_CALL && views[currentViewNum] instanceof LoginActivitySmsView) {
                 int time = ((LoginActivitySmsView) views[currentViewNum]).openTime;
