@@ -131,9 +131,9 @@ git log --oneline -1""", stream=True)
             need.append(abi)
     if need:
         print(f"   собираю Xray {tag} для {', '.join(need)}")
-        code, _ = wsl_bash(f"""set -e
+        code, _ = wsl_bash(f"""set -eo pipefail
 cd {WSL_REPO}
-recgram/tools/build_xray.sh {','.join(need)} 2>&1 | grep -v '^go: downloading'
+bash recgram/tools/build_xray.sh {','.join(need)} 2>&1 | { grep -v '^go: downloading' || true; }
 for abi in {' '.join(need)}; do rm -f TMessagesProj/src/main/jniLibs/.xray-*-$abi; touch {stamp}-$abi; done""", stream=True)
         if code:
             sys.exit("Xray не собрался (см. вывод выше).")
@@ -153,9 +153,9 @@ for abi in {' '.join(need)}; do rm -f TMessagesProj/src/main/jniLibs/.xray-*-$ab
             need.append(abi)
     if need:
         print(f"   собираю AmneziaWG для {', '.join(need)}")
-        code, _ = wsl_bash(f"""set -e
+        code, _ = wsl_bash(f"""set -eo pipefail
 cd {WSL_REPO}
-recgram/tools/build_awg.sh {','.join(need)} 2>&1 | grep -v '^go: downloading'
+bash recgram/tools/build_awg.sh {','.join(need)} 2>&1 | { grep -v '^go: downloading' || true; }
 for abi in {' '.join(need)}; do rm -f TMessagesProj/src/main/jniLibs/.awg-*-$abi; touch {awg_stamp}-$abi; done""", stream=True)
         if code:
             sys.exit("AmneziaWG не собрался (см. вывод выше).")
