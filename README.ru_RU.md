@@ -93,6 +93,32 @@ Telegram Desktop: страницы `messages.html`, `result.json` и папки 
 голосовыми и видеосообщениями, стикерами и файлами. Можно выбрать типы
 вложений, предел размера файла и форматы.
 
+**Обход блокировок**
+
+**Настройки → RecGram → Обход блокировок**. Работает только для RecGram:
+системный VPN не нужен, остальные приложения идут в сеть как обычно.
+- **Прокси Telegram** (MTProto, SOCKS5): импорт сразу многих ссылок
+  `tg://proxy`, `t.me/proxy`, `tg://socks`, `t.me/socks` из буфера обмена,
+  подписка (ссылка на список, в т. ч. Base64), «Проверить и включить лучший».
+- **Защита от DPI**: RecGram режет первый пакет соединения так, что
+  оборудование провайдера не видит в нём имя сайта, а сервер получает пакет
+  целиком. Режимы: «Разрез пакета», «Разрез + обратный порядок»
+  (рекомендуется), «Разрез + срочный байт» и автоподбор. От блокировки по
+  адресам серверов Telegram это не спасает — нужен прокси или VLESS.
+- **VLESS-сервер (Xray)** — самый надёжный обход, если Telegram блокируют по
+  адресам. Внутри RecGram работает [Xray-core](https://github.com/XTLS/Xray-core):
+  VLESS с Reality или TLS и транспортами xhttp, ws, httpupgrade, gRPC, raw.
+  Добавить сервер можно ссылкой `vless://` (в v2RayTun и v2rayNG — «Поделиться»)
+  из буфера обмена, QR-кодом (**Сканировать QR**), файлом — JSON-конфигом Xray
+  или `shared_preferences.json` из v2RayTun — или подпиской. **Проверить
+  серверы** показывает пинг до Telegram через каждый сервер, нажатие на сервер
+  включает его. Xray запускается отдельным процессом вместе с RecGram и слушает
+  только `127.0.0.1` со случайным логином и паролем; настройки сервера на диск
+  не пишутся, журнал Xray (кнопка **Журнал Xray**) не содержит uuid и адресов,
+  куда ходит Telegram.
+- При первом запуске есть шаг **Подключение к Telegram** с этими же
+  настройками. В странах, где Telegram блокируют, дальше без связи не пустит.
+
 **Прочее**
 - Карты — OpenStreetMap, спутниковые снимки Esri.
 - Уведомления через фоновое соединение: push Telegram отправляет только
@@ -104,6 +130,9 @@ Telegram Desktop: страницы `messages.html`, `result.json` и папки 
 - Записывается только то, что есть на вашем телефоне: ваш микрофон и то, что
   вы слышите. Групповые звонки записываются без видео.
 - Секретные чаты не экспортируются.
+- Звонки Telegram не идут через прокси и VLESS — так устроен сам Telegram;
+  сообщения, медиа и вход работают через них полностью.
+- Xray добавляет к APK около 12 МБ на архитектуру.
 - Уведомления зависят от фонового соединения: разрешите RecGram работу без
   ограничений батареи, иначе Android может его закрыть.
 - Telegram Premium в неофициальных приложениях не купить, но купленный в
@@ -126,10 +155,11 @@ Telegram Desktop: страницы `messages.html`, `result.json` и папки 
 
 ## Сборка
 
-Нужны JDK 17, Android SDK 36, NDK 27.2.12479018, CMake 3.22.1 и подмодули:
+Нужны JDK 17, Android SDK 36, NDK 27.2.12479018, CMake 3.22.1, Go и подмодули:
 
 ```
 git submodule update --init --recursive
+recgram/tools/build_xray.sh arm64-v8a,armeabi-v7a
 ./gradlew :TMessagesProj_App:assembleAfatRelease -PrecgramAbis=arm64-v8a,armeabi-v7a
 ```
 
@@ -138,6 +168,13 @@ git submodule update --init --recursive
 `RECGRAM_KEY_PASSWORD`), см. [secrets/README.md](secrets/README.md). Без них APK
 подписывается публичным тестовым ключом Telegram и не ставится поверх
 релизной сборки. Без `-PrecgramAbis` собираются все четыре архитектуры.
+
+`build_xray.sh` скачивает исходники Xray-core нужной версии (тег в начале
+скрипта, сейчас `v26.11.9`) и собирает исполняемый файл `libxray.so` для каждой
+архитектуры в `TMessagesProj/src/main/jniLibs/<abi>/` (в git не хранится).
+Android распаковывает его вместе с остальными библиотеками, RecGram запускает
+его отдельным процессом. Если шаг пропустить, приложение соберётся, а раздел
+VLESS покажет, что Xray не входит в сборку.
 
 Новый код — в пакете `org.recgram` (`TMessagesProj/src/main/java/org/recgram`).
 В исходники Telegram внесены только точечные вызовы, каждый отмечен
@@ -150,7 +187,7 @@ git submodule update --init --recursive
 
 Тег вида `v1.0.0` или `v1.0.0-beta.1` запускает
 [workflow релиза](.github/workflows/release.yml). GitHub собирает подписанный APK
-для arm64-v8a и armeabi-v7a, проверяет, что он подписан сертификатом RecGram, и
+для arm64-v8a и armeabi-v7a (вместе с Xray-core из исходников), проверяет, что он подписан сертификатом RecGram, и
 публикует `RecGram-<тег>.apk`, `RecGram.apk` и `SHA256SUMS.txt`. Тег с суффиксом
 публикуется как пререлиз. Ручной запуск собирает APK как артефакт на три дня и
 ничего не публикует.
@@ -162,6 +199,9 @@ RecGram — форк Telegram for Android (Nikolai Kudashov и команда Te
 описание Telegram сохранено в [TELEGRAM_README.md](TELEGRAM_README.md).
 
 Сторонние части:
+- [Xray-core](https://github.com/XTLS/Xray-core) (Project X) — Mozilla Public
+  License 2.0; входит в APK отдельным исполняемым файлом, собранным без
+  изменений из исходников тега, указанного в `recgram/tools/build_xray.sh`;
 - провайдер карт OpenStreetMap адаптирован из
   [Nullgram](https://github.com/qwq233/Nullgram) /
   [Nnngram](https://github.com/NextAlone/Nnngram) (GPL-2.0-or-later);

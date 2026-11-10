@@ -96,6 +96,33 @@ Desktop does: `messages.html` pages, `result.json` and folders with photos,
 videos, voice and video messages, stickers and files. You choose the media types,
 a file size limit and the formats.
 
+**Bypassing blocks**
+
+**Settings → RecGram → Bypass blocking**. It applies to RecGram only: no system
+VPN is needed and other apps use the network as usual.
+- **Telegram proxies** (MTProto, SOCKS5): import many `tg://proxy`,
+  `t.me/proxy`, `tg://socks` and `t.me/socks` links at once from the clipboard,
+  a subscription (a link to a list, Base64 too), and "Check and use the best".
+- **DPI protection**: RecGram splits the first packet of a connection so that
+  provider equipment cannot read the site name in it while the server still
+  gets the whole packet. Modes: "Split packet", "Split + disorder"
+  (recommended), "Split + OOB byte" and automatic selection. It does not help
+  when Telegram server addresses are blocked — that needs a proxy or VLESS.
+- **VLESS server (Xray)** is the most reliable bypass when Telegram is blocked
+  by address. RecGram runs [Xray-core](https://github.com/XTLS/Xray-core) inside:
+  VLESS with Reality or TLS over xhttp, ws, httpupgrade, gRPC or raw. Add a
+  server with a `vless://` link from the clipboard ("Share" in v2RayTun and
+  v2rayNG), a QR code (**Scan QR**), a file — an Xray JSON config or
+  `shared_preferences.json` from v2RayTun — or a subscription. **Check servers**
+  shows the ping to Telegram through each server; tap a server to turn it on.
+  Xray runs as a separate process together with RecGram and listens only on
+  `127.0.0.1` with a random login and password; server settings are never
+  written to disk, and the Xray log (**Xray log**) contains no uuids and no
+  addresses Telegram connects to.
+- The first start has a **Connecting to Telegram** step with the same
+  settings. In countries that block Telegram it does not continue without a
+  connection.
+
 **Other changes**
 - Maps: OpenStreetMap, satellite imagery by Esri.
 - Notifications through a background connection: Telegram sends push
@@ -107,6 +134,9 @@ a file size limit and the formats.
 - Calls are recorded on your phone only: your microphone and what you hear.
   Group calls are recorded without video.
 - Secret chats cannot be exported.
+- Telegram calls do not go through proxies or VLESS — this is how Telegram
+  itself works; messages, media and sign-in go through them fully.
+- Xray adds about 12 MB to the APK per ABI.
 - Notifications depend on the background connection; allow RecGram to run
   without battery restrictions, otherwise Android may close it.
 - Telegram Premium cannot be bought in unofficial apps, but works if bought
@@ -130,11 +160,12 @@ recordings.
 
 ## Building
 
-You need JDK 17, Android SDK 36, NDK 27.2.12479018, CMake 3.22.1 and the
+You need JDK 17, Android SDK 36, NDK 27.2.12479018, CMake 3.22.1, Go and the
 submodules:
 
 ```
 git submodule update --init --recursive
+recgram/tools/build_xray.sh arm64-v8a,armeabi-v7a
 ./gradlew :TMessagesProj_App:assembleAfatRelease -PrecgramAbis=arm64-v8a,armeabi-v7a
 ```
 
@@ -144,6 +175,13 @@ environment variables (`RECGRAM_KEYSTORE`, `RECGRAM_KEYSTORE_PASSWORD`,
 [secrets/README.md](secrets/README.md). Without them the APK is signed with
 Telegram's public test key and cannot update a release build. Without
 `-PrecgramAbis` all four ABIs are built.
+
+`build_xray.sh` downloads the Xray-core sources of the pinned version (the tag
+at the top of the script, currently `v26.11.9`) and builds an executable
+`libxray.so` for each ABI into `TMessagesProj/src/main/jniLibs/<abi>/` (not
+kept in git). Android extracts it with the other native libraries and RecGram
+runs it as a separate process. If you skip this step the app still builds, and
+the VLESS section says that Xray is not part of the build.
 
 New code lives in the `org.recgram` package
 (`TMessagesProj/src/main/java/org/recgram`). Telegram sources contain only small
@@ -156,7 +194,7 @@ commit `7be672ead` (Telegram 13.2.1). PNG icons for Android 6–7 are drawn by
 
 Pushing a tag such as `v1.0.0` or `v1.0.0-beta.1` starts the
 [release workflow](.github/workflows/release.yml). GitHub builds a signed APK
-for arm64-v8a and armeabi-v7a, checks that it is signed with the RecGram
+for arm64-v8a and armeabi-v7a (with Xray-core built from source), checks that it is signed with the RecGram
 certificate, and publishes `RecGram-<tag>.apk`, `RecGram.apk` and
 `SHA256SUMS.txt`. A tag with a suffix is marked as a prerelease. Run by hand,
 the workflow builds the APK as an artifact kept for three days and publishes
@@ -169,6 +207,9 @@ team) and is distributed under the same **[GNU GPL v2](LICENSE)**. The original
 Telegram description is kept in [TELEGRAM_README.md](TELEGRAM_README.md).
 
 Third-party parts:
+- [Xray-core](https://github.com/XTLS/Xray-core) (Project X) — Mozilla Public
+  License 2.0; shipped in the APK as a separate executable built unmodified
+  from the source tag set in `recgram/tools/build_xray.sh`;
 - the OpenStreetMap map provider is adapted from
   [Nullgram](https://github.com/qwq233/Nullgram) /
   [Nnngram](https://github.com/NextAlone/Nnngram) (GPL-2.0-or-later);
