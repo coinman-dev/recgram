@@ -174,7 +174,7 @@ public final class Bypass {
             "(tg://(?:proxy|socks)\\?[^\\s\"'<>]+|https?://(?:t\\.me|telegram\\.me|telegram\\.dog)/(?:proxy|socks)\\?[^\\s\"'<>]+)",
             Pattern.CASE_INSENSITIVE);
 
-    /** Добавляет все ссылки на прокси из текста. Возвращает число новых прокси. */
+    /** Добавляет все ссылки на прокси и серверы VLESS из текста. Возвращает число новых. */
     public static int importLinks(String text) {
         if (TextUtils.isEmpty(text)) {
             return 0;
@@ -200,7 +200,7 @@ public final class Bypass {
         if (added > 0) {
             NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxySettingsChanged);
         }
-        return added;
+        return added + Vless.importText(text); // и серверы VLESS (ссылки vless://, JSON Xray / v2RayTun)
     }
 
     /** Загружает список по ссылке подписки (обычный текст или Base64) и добавляет прокси. Результат — в UI-потоке; -1 при ошибке. */
@@ -236,9 +236,9 @@ public final class Bypass {
                     return;
                 }
                 int n = importLinks(body);
-                if (n == 0 && !LINK.matcher(body).find()) {
+                if (n == 0 && !LINK.matcher(body).find() && !VlessConfig.containsLinks(body)) {
                     try {
-                        n = importLinks(new String(Base64.decode(body.trim(), Base64.DEFAULT), StandardCharsets.UTF_8));
+                        n = importLinks(VlessConfig.maybeBase64(body));
                     } catch (Throwable ignore) {
                     }
                 }

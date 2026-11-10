@@ -6,6 +6,8 @@ obj/
 local.properties
 TMessagesProj/.cxx/
 TMessagesProj/jniLibs/
+# RecGram: Xray-core, собирается recgram/tools/build_xray.sh
+TMessagesProj/src/main/jniLibs/*/libxray.so
 TMessagesProj/jniRes/
 **/.DS_Store
 TMessagesProj/afat/

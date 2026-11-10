@@ -54,6 +54,25 @@ jobs:
           key: cxx-${{ runner.os }}-${{ env.NDK_VERSION }}-${{ hashFiles('TMessagesProj/jni/**/CMakeLists.txt', '.gitmodules') }}
           restore-keys: cxx-${{ runner.os }}-${{ env.NDK_VERSION }}-
 
+      # Xray-core для VLESS (org.recgram.bypass.Vless): исполняемый libxray.so для каждого ABI
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Кэш Go (Xray-core)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/.cache/recgram-xray
+          key: xray-${{ runner.os }}-${{ hashFiles('recgram/tools/build_xray.sh') }}
+          restore-keys: xray-${{ runner.os }}-
+
+      - name: Xray-core
+        run: recgram/tools/build_xray.sh "$ABIS"
+
       - name: Ключ подписи
         env:
           KEYSTORE_B64: ${{ secrets.RECGRAM_KEYSTORE_BASE64 }}

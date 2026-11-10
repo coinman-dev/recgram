@@ -713,6 +713,7 @@ public class ConnectionsManager extends BaseController {
         }
 
         org.recgram.bypass.Bypass.applyDpiOnce(); // RecGram: режим защиты от DPI до первых соединений
+        org.recgram.bypass.Vless.startIfEnabled(); // RecGram: встроенный Xray (VLESS), если включён
         native_init(currentAccount, version, layer, apiId, deviceModel, systemVersion, appVersion, langCode, systemLangCode, configPath, logPath, regId, cFingerprint, installer, packageId, timezoneOffset, userId, userPremium, enablePushConnection, ApplicationLoader.isNetworkOnline(), ApplicationLoader.getCurrentNetworkType(), SharedConfig.measureDevicePerformanceClass());
         checkConnection();
     }

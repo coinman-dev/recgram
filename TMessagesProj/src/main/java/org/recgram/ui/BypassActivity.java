@@ -11,6 +11,8 @@ import android.view.View;
 import android.widget.Toast;
 
 import org.recgram.bypass.Bypass;
+import org.recgram.bypass.Vless;
+import org.recgram.bypass.VlessConfig;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.SharedConfig;
@@ -45,6 +47,13 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
     private static final int ID_PROXY_LIST = 1, ID_IMPORT = 2, ID_SUBSCRIPTION = 3, ID_SUB_UPDATE = 4, ID_BEST = 5;
     private static final int ID_MODE_BASE = 10;
     private static final int ID_DIRECT = 20, ID_AUTO = 21;
+    private static final int ID_VLESS_FILE = 40, ID_VLESS_CHECK = 41, ID_VLESS_OFF = 42, ID_VLESS_LOG = 43, ID_VLESS_BASE = 100;
+    private static final int REQ_VLESS_FILE = 7301;
+
+    private boolean vlessChecking;
+    private boolean vlessStarting;
+    private String vlessStatus;
+    private ArrayList<VlessConfig> vlessList = new ArrayList<>();
 
     private boolean busy;          // идёт автоподбор
     private boolean checking;      // идёт «проверить все»
@@ -139,7 +148,9 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
     @Override
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         SharedConfig.loadProxyList();
-        String current = SharedConfig.isProxyEnabled() && SharedConfig.currentProxy != null
+        VlessConfig activeVless = Vless.isActive() ? Vless.find(Vless.getSelectedId()) : null;
+        String current = activeVless != null ? "VLESS: " + activeVless.name
+                : SharedConfig.isProxyEnabled() && SharedConfig.currentProxy != null
                 ? SharedConfig.currentProxy.settings.getAddress() + ":" + SharedConfig.currentProxy.settings.getPort()
                 : s("выключен", "off");
 
@@ -174,8 +185,10 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             items.add(UItem.asShadow("⏳ " + checkProgress));
         }
         items.add(UItem.asShadow((status != null ? status + "\n\n" : "") + s(
-                "Блокировку Telegram по адресам серверов обходит только прокси. Лучше всего работает MTProto-прокси с маскировкой под HTTPS (ссылка с секретом, начинающимся на ee). Импорт понимает ссылки tg://proxy, t.me/proxy, tg://socks и t.me/socks — сразу много из скопированного текста. Подписка — ссылка на страницу или файл со списком таких ссылок.",
-                "Only a proxy gets around blocking of Telegram server addresses. An MTProto proxy disguised as HTTPS works best (a link with a secret starting with ee). Import understands tg://proxy, t.me/proxy, tg://socks and t.me/socks links — many at once from copied text. A subscription is a link to a page or file with such links.")));
+                "Блокировку Telegram по адресам серверов обходит только прокси. Лучше всего работает MTProto-прокси с маскировкой под HTTPS (ссылка с секретом, начинающимся на ee). Импорт понимает ссылки tg://proxy, t.me/proxy, tg://socks, t.me/socks и vless:// — сразу много из скопированного текста. Подписка — ссылка на страницу или файл со списком таких ссылок.",
+                "Only a proxy gets around blocking of Telegram server addresses. An MTProto proxy disguised as HTTPS works best (a link with a secret starting with ee). Import understands tg://proxy, t.me/proxy, tg://socks, t.me/socks and vless:// links — many at once from copied text. A subscription is a link to a page or file with such links.")));
+
+        fillVless(items);
 
         int mode = Bypass.getDpiMode();
         items.add(UItem.asHeader(s("Защита от DPI", "DPI protection")));
@@ -211,6 +224,151 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
         }
     }
 
+    private void fillVless(ArrayList<UItem> items) {
+        items.add(UItem.asHeader(s("VLESS-сервер (Xray)", "VLESS server (Xray)")));
+        if (!Vless.isAvailable()) {
+            items.add(UItem.asShadow(s("Встроенный Xray не входит в эту сборку RecGram.", "The built-in Xray is not part of this RecGram build.")));
+            return;
+        }
+        vlessList = Vless.list();
+        String sel = Vless.getSelectedId();
+        boolean enabled = Vless.isEnabled();
+        String err = Vless.getLastError();
+        String state;
+        if (vlessStarting || enabled && !Vless.isReady() && err == null) {
+            state = "⏳ " + s("Запускаю Xray…", "Starting Xray…");
+        } else if (Vless.isActive() && Vless.isReady()) {
+            state = "✅ " + s("Telegram идёт через VLESS", "Telegram goes through VLESS");
+        } else if (enabled && err != null) {
+            state = "⚠️ " + err;
+        } else {
+            state = s("Выключен", "Off");
+        }
+        items.add(UItem.asButton(ID_VLESS_LOG, state, s("журнал", "log")));
+        for (int i = 0; i < vlessList.size(); i++) {
+            VlessConfig c = vlessList.get(i);
+            boolean on = enabled && c.id.equals(sel);
+            // пинг первым: длинное значение справа обрезается
+            String ping = c.ping > 0 ? c.ping + s(" мс · ", " ms · ") : c.ping == 0 ? s("нет связи · ", "no link · ") : "";
+            items.add(UItem.asButton(ID_VLESS_BASE + i, (on ? "● " : "") + c.name, ping + c.summary().replaceFirst("^vless · ", "")));
+        }
+        items.add(UItem.asButton(ID_VLESS_FILE, s("Импорт из файла", "Import from file")));
+        if (!vlessList.isEmpty()) {
+            items.add(UItem.asButton(ID_VLESS_CHECK, vlessChecking ? "⏳ " + s("Проверяю серверы…", "Checking servers…")
+                    : s("Проверить серверы", "Check servers")).accent());
+        }
+        if (enabled) {
+            items.add(UItem.asButton(ID_VLESS_OFF, s("Выключить VLESS", "Turn VLESS off")).red());
+        }
+        items.add(UItem.asShadow((vlessStatus != null ? vlessStatus + "\n\n" : "") + s(
+                "Свой зарубежный сервер VLESS (Reality, xhttp, ws, gRPC…) — самый надёжный обход, если Telegram блокируют по адресам. RecGram запускает Xray внутри себя: через сервер идёт только трафик RecGram, системный VPN не нужен.\n"
+                        + "Добавить сервер: скопируйте ссылку vless:// (в v2RayTun/v2rayNG — «Поделиться») и нажмите «Импорт из буфера обмена» выше, либо выберите файл — JSON-конфиг Xray или shared_preferences.json из v2RayTun. Подписка выше тоже понимает ссылки vless://.\n"
+                        + "Нажмите на сервер, чтобы включить, переименовать или удалить. Звонки Telegram через прокси не идут.",
+                "Your own VLESS server abroad (Reality, xhttp, ws, gRPC…) is the most reliable bypass when Telegram is blocked by address. RecGram runs Xray inside itself: only RecGram traffic goes through the server, no system VPN is needed.\n"
+                        + "To add a server, copy a vless:// link (\"Share\" in v2RayTun/v2rayNG) and tap \"Import from clipboard\" above, or pick a file: an Xray JSON config or shared_preferences.json from v2RayTun. The subscription above also understands vless:// links.\n"
+                        + "Tap a server to turn it on, rename or delete it. Telegram calls do not go through proxies.")));
+    }
+
+    private void vlessMenu(Context ctx, VlessConfig c) {
+        boolean on = Vless.isEnabled() && c.id.equals(Vless.getSelectedId());
+        AlertDialog.Builder b = new AlertDialog.Builder(ctx);
+        b.setTitle(c.name);
+        CharSequence[] opts = {
+                on ? s("Выключить", "Turn off") : s("Включить", "Turn on"),
+                s("Переименовать", "Rename"),
+                s("Удалить", "Delete")
+        };
+        b.setItems(opts, (d, which) -> {
+            if (which == 0) {
+                if (on) {
+                    Vless.disable();
+                    vlessStatus = null;
+                    update();
+                } else {
+                    vlessStarting = true;
+                    vlessStatus = null;
+                    update();
+                    Vless.enable(c, ok -> {
+                        vlessStarting = false;
+                        vlessStatus = ok ? s("Включён «", "Using \"") + c.name + s("». Дождитесь «Связь есть» вверху.", "\". Wait for \"Connected\" at the top.")
+                                : s("Не удалось запустить Xray: ", "Could not start Xray: ") + Vless.getLastError();
+                        update();
+                    });
+                }
+            } else if (which == 1) {
+                showRenameDialog(ctx, c);
+            } else {
+                AlertDialog.Builder q = new AlertDialog.Builder(ctx);
+                q.setTitle(s("Удалить сервер?", "Delete server?"));
+                q.setMessage(c.name);
+                q.setPositiveButton(s("Удалить", "Delete"), (d2, w2) -> {
+                    Vless.delete(c);
+                    update();
+                });
+                q.setNegativeButton(s("Отмена", "Cancel"), null);
+                showDialog(q.create());
+            }
+        });
+        showDialog(b.create());
+    }
+
+    private void showRenameDialog(Context ctx, VlessConfig c) {
+        EditTextBoldCursor field = new EditTextBoldCursor(ctx);
+        field.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 17);
+        field.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+        field.setSingleLine(true);
+        field.setBackground(null);
+        field.setLineColors(Theme.getColor(Theme.key_dialogInputField), Theme.getColor(Theme.key_dialogInputFieldActivated), Theme.getColor(Theme.key_text_RedBold));
+        field.setCursorColor(Theme.getColor(Theme.key_dialogTextBlack));
+        field.setText(c.name);
+        AlertDialog.Builder b = new AlertDialog.Builder(ctx);
+        b.setTitle(s("Имя сервера", "Server name"));
+        android.widget.LinearLayout box = new android.widget.LinearLayout(ctx);
+        box.addView(field, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 40, 24, 8, 24, 8));
+        b.setView(box);
+        b.setPositiveButton(s("Сохранить", "Save"), (d, w) -> {
+            String name = field.getText().toString().trim();
+            if (!name.isEmpty()) {
+                Vless.rename(c, name);
+                update();
+            }
+        });
+        b.setNegativeButton(s("Отмена", "Cancel"), null);
+        showDialog(b.create());
+    }
+
+    private void showVlessLog(Context ctx) {
+        String log = Vless.logText();
+        AlertDialog.Builder b = new AlertDialog.Builder(ctx);
+        b.setTitle(s("Журнал Xray", "Xray log"));
+        b.setMessage(log.isEmpty() ? s("Пусто.", "Empty.") : log);
+        b.setPositiveButton("OK", null);
+        showDialog(b.create());
+    }
+
+    @Override
+    public void onActivityResultFragment(int requestCode, int resultCode, android.content.Intent data) {
+        if (requestCode != REQ_VLESS_FILE || resultCode != android.app.Activity.RESULT_OK || data == null || data.getData() == null) {
+            return;
+        }
+        Context ctx = getParentActivity();
+        if (ctx == null) return;
+        try (java.io.InputStream in = ctx.getContentResolver().openInputStream(data.getData())) {
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[16384];
+            int n;
+            while (in != null && (n = in.read(buf)) > 0 && out.size() < 4 * 1024 * 1024) {
+                out.write(buf, 0, n);
+            }
+            int added = Bypass.importLinks(VlessConfig.maybeBase64(out.toString("UTF-8")));
+            vlessStatus = added > 0 ? s("Добавлено из файла: ", "Added from file: ") + added
+                    : s("В файле нет новых серверов.", "No new servers in the file.");
+        } catch (Throwable e) {
+            vlessStatus = s("Не удалось прочитать файл.", "Could not read the file.");
+        }
+        update();
+    }
+
     private static String shortUrl(String url) {
         String u = url.replaceFirst("^https?://", "");
         return u.length() > 32 ? u.substring(0, 31) + "…" : u;
@@ -232,6 +390,46 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             org.recgram.ApiKeys.restartApp();
             return;
         }
+        if (id >= ID_VLESS_BASE && id < ID_VLESS_BASE + vlessList.size()) {
+            if (!vlessStarting) vlessMenu(ctx, vlessList.get(id - ID_VLESS_BASE));
+            return;
+        }
+        if (id == ID_VLESS_LOG) {
+            showVlessLog(ctx);
+            return;
+        }
+        if (id == ID_VLESS_OFF) {
+            Vless.disable();
+            vlessStatus = null;
+            update();
+            return;
+        }
+        if (id == ID_VLESS_FILE) {
+            android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT);
+            i.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+            i.setType("*/*");
+            try {
+                startActivityForResult(i, REQ_VLESS_FILE);
+            } catch (Throwable e) {
+                Toast.makeText(ctx, s("Нет приложения для выбора файла", "No file picker app"), Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+        if (id == ID_VLESS_CHECK) {
+            if (vlessChecking) return;
+            vlessChecking = true;
+            vlessStatus = null;
+            update();
+            Vless.checkAll(res -> {
+                vlessChecking = false;
+                int ok = 0;
+                for (VlessConfig c : res) if (c.ping > 0) ok++;
+                vlessStatus = ok == 0 ? s("Ни один сервер не дал связи с Telegram. Подробности — в журнале (строка состояния выше).", "No server reached Telegram. See the log (status line above).")
+                        : s("Связь с Telegram есть через ", "Telegram reachable via ") + ok + s(" из ", " of ") + res.size() + s(". Быстрейший — «", ". Fastest: \"") + res.get(0).name + s("».", "\".");
+                update();
+            });
+            return;
+        }
         if (id == ID_PROXY_LIST) {
             presentFragment(new ProxyListActivity());
         } else if (id == ID_IMPORT) {
@@ -239,8 +437,8 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             ClipData clip = cm != null ? cm.getPrimaryClip() : null;
             CharSequence text = clip != null && clip.getItemCount() > 0 ? clip.getItemAt(0).coerceToText(ctx) : null;
             int n = Bypass.importLinks(text == null ? null : text.toString());
-            status = n > 0 ? s("Добавлено прокси: ", "Proxies added: ") + n
-                    : s("В буфере обмена нет новых ссылок на прокси.", "No new proxy links in the clipboard.");
+            status = n > 0 ? s("Добавлено прокси и серверов: ", "Proxies and servers added: ") + n
+                    : s("В буфере обмена нет новых ссылок на прокси или серверы VLESS.", "No new proxy or VLESS links in the clipboard.");
             update();
         } else if (id == ID_SUBSCRIPTION) {
             showSubscriptionDialog(ctx);
