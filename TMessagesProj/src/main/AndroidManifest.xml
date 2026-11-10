@@ -119,6 +119,15 @@
             android:excludeFromRecents="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
+        <!-- RecGram: открыть папку экспорта из уведомления «Экспорт завершён» -->
+        <activity
+            android:name="org.recgram.export.OpenFolderActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <activity-alias
             android:enabled="true"
             android:name="org.telegram.messenger.DefaultIcon"

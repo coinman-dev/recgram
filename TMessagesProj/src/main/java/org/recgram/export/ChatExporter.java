@@ -933,6 +933,9 @@ public final class ChatExporter implements NotificationCenter.NotificationCenter
                     .setPriority(NotificationCompat.PRIORITY_LOW);
             if (!finished) {
                 b.setProgress(0, 0, true);
+            } else if (error == null) {
+                // нажатие открывает папку с экспортом
+                b.setContentIntent(OpenFolderActivity.pendingIntent(ctx, folder(), NOTIFICATION_ID)).setAutoCancel(true);
             }
             nm.notify(NOTIFICATION_ID, b.build());
         } catch (Throwable e) {

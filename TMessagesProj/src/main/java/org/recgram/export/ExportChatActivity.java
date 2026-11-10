@@ -17,7 +17,7 @@ public class ExportChatActivity extends UniversalFragment implements ChatExporte
     private static final int ID_HTML = 1, ID_JSON = 2;
     private static final int ID_MEDIA_BASE = 100;
     private static final int ID_SIZE_BASE = 200;
-    private static final int ID_START = 300, ID_CANCEL = 301;
+    private static final int ID_START = 300, ID_CANCEL = 301, ID_OPEN_FOLDER = 302;
 
     private static final int[] MEDIA = {ChatExporter.PHOTOS, ChatExporter.VIDEOS, ChatExporter.VOICE, ChatExporter.ROUND,
             ChatExporter.STICKERS, ChatExporter.GIFS, ChatExporter.MUSIC, ChatExporter.FILES};
@@ -93,6 +93,9 @@ public class ExportChatActivity extends UniversalFragment implements ChatExporte
                 items.add(UItem.asButton(ID_CANCEL, s("Остановить", "Stop")).red());
                 return;
             }
+            if (e.error == null) {
+                items.add(UItem.asButton(ID_OPEN_FOLDER, s("Открыть папку", "Open folder")).accent());
+            }
             items.add(UItem.asShadow(null));
         }
 
@@ -137,6 +140,9 @@ public class ExportChatActivity extends UniversalFragment implements ChatExporte
             opt.media ^= MEDIA[id - ID_MEDIA_BASE];
         } else if (id >= ID_SIZE_BASE && id < ID_SIZE_BASE + SIZES.length) {
             opt.maxFileSize = SIZES[id - ID_SIZE_BASE];
+        } else if (id == ID_OPEN_FOLDER) {
+            ChatExporter e = mine();
+            if (e != null && getParentActivity() != null) OpenFolderActivity.open(getParentActivity(), e.folder());
         } else if (id == ID_CANCEL) {
             ChatExporter e = mine();
             if (e != null) e.cancel();
