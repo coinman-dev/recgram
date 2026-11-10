@@ -75,6 +75,13 @@ public final class RecGramConfig {
     public static String getAcceptedRiskCountryId() { return prefs().getString("accepted_risk_country", ""); }
     public static void setAcceptedRiskCountryId(String id) { prefs().edit().putString("accepted_risk_country", id).apply(); }
 
+    // Локальный архив удалённых сообщений и чатов
+    public static final int DIALOG_FLAG_LOCAL_DELETED = 1 << 20;
+    public static boolean isPreserveDeleted() { return b("preserve_deleted", false); }
+    public static void setPreserveDeleted(boolean v) { put("preserve_deleted", v); }
+    public static boolean hasPreservedDeleted() { return b("has_preserved_deleted", false); }
+    public static void setHasPreservedDeleted() { put("has_preserved_deleted", true); }
+
     // Защищённый контент
     public static boolean isAllowScreenshots() { return b("allow_screenshots", false); }
     public static void setAllowScreenshots(boolean v) { put("allow_screenshots", v); }

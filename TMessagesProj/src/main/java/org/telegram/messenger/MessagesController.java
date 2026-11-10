@@ -9317,6 +9317,15 @@ public class MessagesController extends BaseController implements NotificationCe
         return inputWallPaper;
     }
 
+    private void markMessageAsDeleted(MessageObject obj) {
+        if (org.recgram.RecGramConfig.isPreserveDeleted() && obj.messageOwner != null) {
+            obj.messageOwner.localDeleted = true;
+            org.recgram.RecGramConfig.setHasPreservedDeleted();
+        } else {
+            obj.deleted = true;
+        }
+    }
+
     public void markDialogMessageAsDeleted(long dialogId, ArrayList<Integer> messages) {
         ArrayList<MessageObject> objs = dialogMessage.get(dialogId);
         if (objs != null) {
@@ -9326,7 +9335,7 @@ public class MessagesController extends BaseController implements NotificationCe
                     for (int a = 0; a < messages.size(); a++) {
                         Integer id = messages.get(a);
                         if (obj.getId() == id) {
-                            obj.deleted = true;
+                            markMessageAsDeleted(obj);
                             break;
                         }
                     }
@@ -9387,7 +9396,7 @@ public class MessagesController extends BaseController implements NotificationCe
                         Integer id = messages.get(a);
                         MessageObject obj = dialogMessagesByIds.get(id);
                         if (obj != null) {
-                            obj.deleted = true;
+                            markMessageAsDeleted(obj);
                         }
                     }
                 } else {
@@ -10082,6 +10091,7 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     protected void deleteDialog(long did, int first, int onlyHistory, int max_id, boolean revoke, TLRPC.InputPeer peer, long taskId) {
+        final boolean preserveDeleted = org.recgram.RecGramConfig.isPreserveDeleted();
         if (onlyHistory == 2) {
             if (did == getUserConfig().getClientUserId()) {
                 getSavedMessagesController().deleteAllDialogs();
@@ -10111,7 +10121,7 @@ public class MessagesController extends BaseController implements NotificationCe
         if (first == 1 && max_id == 0) {
             TLRPC.InputPeer peerFinal = peer;
             getMessagesStorage().getDialogMaxMessageId(did, (param) -> {
-                if (did == getUserConfig().getClientUserId()) {
+                if (!preserveDeleted && did == getUserConfig().getClientUserId()) {
                     getSavedMessagesController().deleteAllDialogs();
                 }
                 deleteDialog(did, 2, onlyHistory, Math.max(0, param), revoke, peerFinal, taskId);
@@ -10119,12 +10129,47 @@ public class MessagesController extends BaseController implements NotificationCe
             });
             return;
         }
-        if (onlyHistory == 0 || onlyHistory == 3) {
+        if (!preserveDeleted && (onlyHistory == 0 || onlyHistory == 3)) {
             getMediaDataController().uninstallShortcut(did, MediaDataController.SHORTCUT_TYPE_USER_OR_CHAT);
         }
         int max_id_delete = max_id;
 
-        if (first != 0) {
+        if (first != 0 && preserveDeleted) {
+            getMessagesStorage().deleteDialog(did, onlyHistory);
+            TLRPC.Dialog dialog = dialogs_dict.get(did);
+            if (dialog != null) {
+                dialog.localDeleted = true;
+                dialog.unread_count = 0;
+                if (first == 2) {
+                    max_id_delete = Math.max(0, dialog.top_message);
+                    max_id_delete = Math.max(max_id_delete, dialog.read_inbox_max_id);
+                    max_id_delete = Math.max(max_id_delete, dialog.read_outbox_max_id);
+                }
+            }
+            ArrayList<MessageObject> objects = dialogMessage.get(did);
+            if (objects != null) {
+                for (MessageObject object : objects) {
+                    if (object != null) {
+                        markMessageAsDeleted(object);
+                    }
+                }
+            }
+            if (first == 2) {
+                Integer max = dialogs_read_inbox_max.get(did);
+                if (max != null) {
+                    max_id_delete = Math.max(max, max_id_delete);
+                }
+                max = dialogs_read_outbox_max.get(did);
+                if (max != null) {
+                    max_id_delete = Math.max(max, max_id_delete);
+                }
+            }
+            if (!dialogsInTransaction) {
+                getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
+                getNotificationCenter().postNotificationName(NotificationCenter.recgramDialogMessagesDeleted, did);
+            }
+            getMessagesStorage().getStorageQueue().postRunnable(() -> AndroidUtilities.runOnUIThread(() -> getNotificationsController().removeNotificationsForDialog(did)));
+        } else if (first != 0) {
             if (BuildVars.LOGS_ENABLED) {
                 FileLog.d("delete dialog with id " + did);
             }
@@ -13060,6 +13105,9 @@ public class MessagesController extends BaseController implements NotificationCe
 
                 for (int a = 0; a < allDialogs.size(); a++) {
                     TLRPC.Dialog oldDialog = allDialogs.get(a);
+                    if (oldDialog.localDeleted) {
+                        continue;
+                    }
                     if (!DialogObject.isEncryptedDialog(oldDialog.id)) {
                         dialogs_dict.remove(oldDialog.id);
                         ArrayList<MessageObject> messages = dialogMessage.get(oldDialog.id);
@@ -15916,6 +15964,9 @@ public class MessagesController extends BaseController implements NotificationCe
             }
         } else {
             if (forceDelete) {
+                if (self && org.recgram.RecGramConfig.isPreserveDeleted()) {
+                    deleteDialog(-chatId, 0, revoke);
+                }
                 TLRPC.TL_messages_deleteChat req = new TLRPC.TL_messages_deleteChat();
                 req.chat_id = chatId;
                 getConnectionsManager().sendRequest(req, (response, error) -> {
@@ -15999,6 +16050,9 @@ public class MessagesController extends BaseController implements NotificationCe
             }
         } else {
             if (forceDelete) {
+                if (UserObject.isUserSelf(user) && org.recgram.RecGramConfig.isPreserveDeleted()) {
+                    deleteDialog(-chatId, 0, revoke);
+                }
                 TLRPC.TL_messages_deleteChat req = new TLRPC.TL_messages_deleteChat();
                 req.chat_id = chatId;
                 getConnectionsManager().sendRequest(req, (response, error) -> {
@@ -17644,7 +17698,7 @@ public class MessagesController extends BaseController implements NotificationCe
                         Integer id = ids.get(b);
                         MessageObject obj = dialogMessagesByIds.get(id);
                         if (obj != null) {
-                            obj.deleted = true;
+                            markMessageAsDeleted(obj);
                         }
                     }
                 } else {
@@ -17654,7 +17708,7 @@ public class MessagesController extends BaseController implements NotificationCe
                             MessageObject obj = objs.get(i);
                             for (int b = 0, size2 = ids.size(); b < size2; b++) {
                                 if (obj.getId() == ids.get(b)) {
-                                    obj.deleted = true;
+                                    markMessageAsDeleted(obj);
                                     break;
                                 }
                             }
@@ -21219,7 +21273,7 @@ public class MessagesController extends BaseController implements NotificationCe
                                 if (BuildVars.LOGS_ENABLED) {
                                     FileLog.d("mark messages " + obj.getId() + " deleted");
                                 }
-                                obj.deleted = true;
+                                markMessageAsDeleted(obj);
                             }
                         }
                     } else {
@@ -21230,7 +21284,7 @@ public class MessagesController extends BaseController implements NotificationCe
                                 if (obj != null) {
                                     for (int b = 0, size2 = arrayList.size(); b < size2; b++) {
                                         if (obj.getId() == arrayList.get(b)) {
-                                            obj.deleted = true;
+                                            markMessageAsDeleted(obj);
                                             break;
                                         }
                                     }
@@ -21273,7 +21327,7 @@ public class MessagesController extends BaseController implements NotificationCe
                         for (int i = 0; i < objs.size(); ++i) {
                             MessageObject obj = objs.get(i);
                             if (obj != null && obj.getId() <= id) {
-                                obj.deleted = true;
+                                markMessageAsDeleted(obj);
                                 break;
                             }
                         }

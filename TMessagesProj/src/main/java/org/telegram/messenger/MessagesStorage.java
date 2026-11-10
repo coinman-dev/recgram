@@ -2489,6 +2489,7 @@ public class MessagesStorage extends BaseController {
                 int dialog_flags = cursor.intValue(16);
                 dialog.unread_mark = (dialog_flags & 1) != 0;
                 dialog.view_forum_as_messages = (dialog_flags & 64) != 0;
+                dialog.localDeleted = (dialog_flags & org.recgram.RecGramConfig.DIALOG_FLAG_LOCAL_DELETED) != 0;
                 long flags = cursor.longValue(8);
                 int low_flags = (int) flags;
                 dialog.notify_settings = new TLRPC.TL_peerNotifySettings();
@@ -4407,7 +4408,9 @@ public class MessagesStorage extends BaseController {
                                 message.readAttachPath(data, getUserConfig().clientUserId);
                                 if (UserObject.isReplyUser(dialogId) && MessageObject.getPeerId(message.fwd_from.from_id) == fromId || MessageObject.getFromChatId(message) == fromId && message.id != 1) {
                                     mids.add(message.id);
-                                    addFilesToDelete(message, filesToDelete, idsToDelete, namesToDelete, false);
+                                    if (!org.recgram.RecGramConfig.isPreserveDeleted()) {
+                                        addFilesToDelete(message, filesToDelete, idsToDelete, namesToDelete, false);
+                                    }
                                 }
                             }
                             data.reuse();
@@ -4518,8 +4521,85 @@ public class MessagesStorage extends BaseController {
         return false;
     }
 
+    private ArrayList<Long> preserveMessagesAsDeleted(long dialogId, ArrayList<Integer> messages, boolean upTo) {
+        ArrayList<Long> dialogsIds = new ArrayList<>();
+        for (int i = 0; i < 2; i++) {
+            String table = i == 0 ? "messages_v2" : "messages_topics";
+            SQLiteCursor cursor = null;
+            SQLitePreparedStatement state = null;
+            try {
+                String where;
+                if (messages == null) {
+                    where = "uid = " + dialogId;
+                } else if (upTo) {
+                    where = "uid = " + dialogId + " AND mid <= " + messages.get(0);
+                } else {
+                    where = "mid IN (" + TextUtils.join(",", messages) + ")";
+                    if (dialogId != 0) {
+                        where += " AND uid = " + dialogId;
+                    } else {
+                        where += " AND is_channel = 0";
+                    }
+                }
+                cursor = database.queryFinalized("SELECT uid, mid, custom_params FROM " + table + " WHERE " + where);
+                state = database.executeFast("UPDATE " + table + " SET custom_params = ? WHERE mid = ? AND uid = ?");
+                while (cursor.next()) {
+                    long did = cursor.longValue(0);
+                    int mid = cursor.intValue(1);
+                    NativeByteBuffer oldParams = cursor.byteBufferValue(2);
+                    TLRPC.Message message = new TLRPC.TL_message();
+                    MessageCustomParamsHelper.readLocalParams(message, oldParams);
+                    if (oldParams != null) {
+                        oldParams.reuse();
+                    }
+                    if (!message.localDeleted) {
+                        message.localDeleted = true;
+                        NativeByteBuffer newParams = MessageCustomParamsHelper.writeLocalParams(message);
+                        state.requery();
+                        if (newParams == null) {
+                            state.bindNull(1);
+                        } else {
+                            state.bindByteBuffer(1, newParams);
+                        }
+                        state.bindInteger(2, mid);
+                        state.bindLong(3, did);
+                        state.step();
+                        if (newParams != null) {
+                            newParams.reuse();
+                        }
+                    }
+                    if (!dialogsIds.contains(did)) {
+                        dialogsIds.add(did);
+                    }
+                }
+            } catch (Exception e) {
+                checkSQLException(e);
+            } finally {
+                if (cursor != null) {
+                    cursor.dispose();
+                }
+                if (state != null) {
+                    state.dispose();
+                }
+            }
+        }
+        if (!dialogsIds.isEmpty()) {
+            org.recgram.RecGramConfig.setHasPreservedDeleted();
+        }
+        return dialogsIds;
+    }
+
     public void deleteDialog(long did, int messagesOnly) {
         storageQueue.postRunnable(() -> {
+            if (org.recgram.RecGramConfig.isPreserveDeleted() && messagesOnly != 2) {
+                preserveMessagesAsDeleted(did, null, false);
+                try {
+                    database.executeFast("UPDATE dialogs SET flags = flags | " + org.recgram.RecGramConfig.DIALOG_FLAG_LOCAL_DELETED + ", unread_count = 0, unread_count_i = 0 WHERE did = " + did).stepThis().dispose();
+                } catch (Exception e) {
+                    checkSQLException(e);
+                }
+                return;
+            }
             SQLiteCursor cursor = null;
             SQLiteCursor cursor2 = null;
             SQLitePreparedStatement state5 = null;
@@ -4714,7 +4794,7 @@ public class MessagesStorage extends BaseController {
                     orderArrayList.add(dialog.id);
                 }
 
-                cursor = database.queryFinalized("SELECT did, pinned FROM dialogs WHERE 1");
+                cursor = database.queryFinalized("SELECT did, pinned FROM dialogs WHERE (flags & " + org.recgram.RecGramConfig.DIALOG_FLAG_LOCAL_DELETED + ") = 0");
                 while (cursor.next()) {
                     long did = cursor.longValue(0);
                     int pinnedNum = cursor.intValue(1);
@@ -11589,17 +11669,25 @@ public class MessagesStorage extends BaseController {
                 boolean checkInvite = false;
                 long did = -channelId;
                 int pinned = 0;
+                boolean localDeleted = false;
 
-                cursor = database.queryFinalized("SELECT pinned FROM dialogs WHERE did = " + did);
+                cursor = database.queryFinalized("SELECT pinned, flags FROM dialogs WHERE did = " + did);
                 if (!cursor.next()) {
                     if (newDialogType != 0) {
                         checkInvite = true;
                     }
                 } else {
                     pinned = cursor.intValue(0);
+                    localDeleted = (cursor.intValue(1) & org.recgram.RecGramConfig.DIALOG_FLAG_LOCAL_DELETED) != 0;
                 }
                 cursor.dispose();
                 cursor = null;
+                if (localDeleted) {
+                    if (onDone != null) {
+                        onDone.run();
+                    }
+                    return;
+                }
 
                 database.executeFast("DELETE FROM chat_pinned_count WHERE uid = " + did).stepThis().dispose();
                 database.executeFast("DELETE FROM chat_pinned_v2 WHERE uid = " + did).stepThis().dispose();
@@ -12767,6 +12855,20 @@ public class MessagesStorage extends BaseController {
                     int messageId = message.id;
                     if (message.local_id != 0) {
                         messageId = message.local_id;
+                    }
+                    if (org.recgram.RecGramConfig.hasPreservedDeleted() && !message.localDeleted) {
+                        cursor = database.queryFinalized("SELECT custom_params FROM messages_v2 WHERE mid = ? AND uid = ?", messageId, message.dialog_id);
+                        if (cursor.next()) {
+                            NativeByteBuffer oldParams = cursor.byteBufferValue(0);
+                            TLRPC.Message oldMessage = new TLRPC.TL_message();
+                            MessageCustomParamsHelper.readLocalParams(oldMessage, oldParams);
+                            message.localDeleted = oldMessage.localDeleted;
+                            if (oldParams != null) {
+                                oldParams.reuse();
+                            }
+                        }
+                        cursor.dispose();
+                        cursor = null;
                     }
                     MessageObject.normalizeFlags(message);
                     NativeByteBuffer data = new NativeByteBuffer(message.getObjectSize());
@@ -14696,6 +14798,9 @@ public class MessagesStorage extends BaseController {
     }
 
     private ArrayList<Long> markMessagesAsDeletedInternal(long dialogId, ArrayList<Integer> messages, boolean deleteFiles, int mode, int threadMessageId) {
+        if (mode == ChatActivity.MODE_DEFAULT && org.recgram.RecGramConfig.isPreserveDeleted()) {
+            return preserveMessagesAsDeleted(dialogId, messages, false);
+        }
         SQLiteCursor cursor = null;
         SQLitePreparedStatement state = null;
         try {
@@ -15277,6 +15382,9 @@ public class MessagesStorage extends BaseController {
     }
 
     private void updateDialogsWithDeletedMessagesInternal(long originalDialogId, long channelId, ArrayList<Integer> messages, ArrayList<Long> additionalDialogsToUpdate) {
+        if (org.recgram.RecGramConfig.isPreserveDeleted()) {
+            return;
+        }
         SQLitePreparedStatement state = null;
         SQLiteCursor cursor = null;
         try {
@@ -15365,6 +15473,7 @@ public class MessagesStorage extends BaseController {
                 int dialog_flags = cursor.intValue(14);
                 dialog.unread_mark = (dialog_flags & 1) != 0;
                 dialog.view_forum_as_messages = (dialog_flags & 64) != 0;
+                dialog.localDeleted = (dialog_flags & org.recgram.RecGramConfig.DIALOG_FLAG_LOCAL_DELETED) != 0;
                 dialog.folder_id = cursor.intValue(15);
                 dialog.unread_reactions_count = cursor.intValue(17);
                 long groupMessagesId = cursor.longValue(18);
@@ -15508,6 +15617,11 @@ public class MessagesStorage extends BaseController {
     }
 
     private ArrayList<Long> markMessagesAsDeletedInternal(long channelId, int mid, boolean deleteFiles) {
+        if (org.recgram.RecGramConfig.isPreserveDeleted()) {
+            ArrayList<Integer> messages = new ArrayList<>(1);
+            messages.add(mid);
+            return preserveMessagesAsDeleted(-channelId, messages, true);
+        }
         SQLiteCursor cursor = null;
         SQLitePreparedStatement state = null;
         try {
@@ -17195,6 +17309,7 @@ public class MessagesStorage extends BaseController {
                         int dialog_flags = cursor.intValue(16);
                         dialog.unread_mark = (dialog_flags & 1) != 0;
                         dialog.view_forum_as_messages = (dialog_flags & 64) != 0;
+                        dialog.localDeleted = (dialog_flags & org.recgram.RecGramConfig.DIALOG_FLAG_LOCAL_DELETED) != 0;
                         long flags = cursor.longValue(8);
                         int low_flags = (int) flags;
                         dialog.notify_settings = new TLRPC.TL_peerNotifySettings();
@@ -17528,7 +17643,7 @@ public class MessagesStorage extends BaseController {
             }
 
             if (!dialogs.dialogs.isEmpty()) {
-                state_messages = database.executeFast("REPLACE INTO messages_v2 VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)");
+                state_messages = database.executeFast("REPLACE INTO messages_v2 VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)");
                 state_dialogs = database.executeFast("REPLACE INTO dialogs VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 state_media = database.executeFast("REPLACE INTO media_v4 VALUES(?, ?, ?, ?, ?)");
                 state_settings = database.executeFast("REPLACE INTO dialog_settings VALUES(?, ?)");
@@ -17543,6 +17658,12 @@ public class MessagesStorage extends BaseController {
                     boolean exists = false;
                     DialogObject.initDialog(dialog);
                     unknownDialogsIds.remove(dialog.id);
+                    cursor = database.queryFinalized("SELECT flags FROM dialogs WHERE did = " + dialog.id);
+                    if (cursor.next() && (cursor.intValue(0) & org.recgram.RecGramConfig.DIALOG_FLAG_LOCAL_DELETED) != 0) {
+                        dialog.localDeleted = true;
+                    }
+                    cursor.dispose();
+                    cursor = null;
 
                     if (check == 1) {
                         cursor = database.queryFinalized("SELECT did FROM dialogs WHERE did = " + dialog.id);
@@ -17586,6 +17707,20 @@ public class MessagesStorage extends BaseController {
                         }
 
                         fixUnsupportedMedia(message);
+                        NativeByteBuffer customParams = null;
+                        if (org.recgram.RecGramConfig.hasPreservedDeleted()) {
+                            cursor = database.queryFinalized("SELECT custom_params FROM messages_v2 WHERE mid = ? AND uid = ?", message.id, dialog.id);
+                            if (cursor.next()) {
+                                NativeByteBuffer oldParams = cursor.byteBufferValue(0);
+                                if (oldParams != null) {
+                                    MessageCustomParamsHelper.readLocalParams(message, oldParams);
+                                    oldParams.reuse();
+                                    customParams = MessageCustomParamsHelper.writeLocalParams(message);
+                                }
+                            }
+                            cursor.dispose();
+                            cursor = null;
+                        }
                         MessageObject.normalizeFlags(message);
                         NativeByteBuffer data = new NativeByteBuffer(message.getObjectSize());
                         message.serializeToStream(data);
@@ -17623,17 +17758,25 @@ public class MessagesStorage extends BaseController {
                             state_messages.bindInteger(14, 0);
                         }
                         state_messages.bindLong(15, MessageObject.getChannelId(message));
-                        if ((message.flags & 131072) != 0) {
-                            state_messages.bindLong(16, message.grouped_id);
+                        if (customParams != null) {
+                            state_messages.bindByteBuffer(16, customParams);
                         } else {
                             state_messages.bindNull(16);
                         }
-                        if (message.reply_to != null) {
-                            state_messages.bindInteger(17, message.reply_to.story_id);
+                        if ((message.flags & 131072) != 0) {
+                            state_messages.bindLong(17, message.grouped_id);
                         } else {
-                            state_messages.bindInteger(17, 0);
+                            state_messages.bindNull(17);
+                        }
+                        if (message.reply_to != null) {
+                            state_messages.bindInteger(18, message.reply_to.story_id);
+                        } else {
+                            state_messages.bindInteger(18, 0);
                         }
                         state_messages.step();
+                        if (customParams != null) {
+                            customParams.reuse();
+                        }
 
                         if (MediaDataController.canAddMessageToMedia(message)) {
                             state_media.requery();
@@ -17700,6 +17843,9 @@ public class MessagesStorage extends BaseController {
                     }
                     if (dialog.view_forum_as_messages) {
                         flags |= 64;
+                    }
+                    if (dialog.localDeleted) {
+                        flags |= org.recgram.RecGramConfig.DIALOG_FLAG_LOCAL_DELETED;
                     }
                     state_dialogs.bindInteger(12, flags);
                     state_dialogs.bindInteger(13, dialog.folder_id);

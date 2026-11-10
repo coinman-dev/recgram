@@ -59446,6 +59446,7 @@ public class TLRPC {
         public int ephemeralAnchorMsgId; // custom
         public long ephemeralReceiverBotId; //custom
         public boolean welcomeTemplateFirst; // custom
+        public boolean localDeleted; // custom
 
         private static Message fromConstructor(int constructor) {
             switch (constructor) {
@@ -61560,6 +61561,7 @@ public class TLRPC {
         public long id; //custom
         public int pinnedNum; //custom
         public boolean isFolder; //custom
+        public boolean localDeleted; //custom
 
         private static Dialog fromConstructor(int constructor) {
             switch (constructor) {

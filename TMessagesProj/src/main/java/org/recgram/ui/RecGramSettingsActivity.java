@@ -25,6 +25,7 @@ public class RecGramSettingsActivity extends UniversalFragment {
 
     private static final int ID_RECORDING = 1;
     private static final int ID_BYPASS = 2;
+    private static final int ID_PRESERVE_DELETED = 3;
     private static final int ID_SCREENSHOTS = 10;
     private static final int ID_SECRET_NOTIFY = 11;
     private static final int ID_COPY = 12;
@@ -72,6 +73,12 @@ public class RecGramSettingsActivity extends UniversalFragment {
                 dpi == org.recgram.bypass.Bypass.DPI_OFF ? s("DPI: выкл", "DPI: off") : s("DPI: вкл", "DPI: on")));
         items.add(UItem.asShadow(null));
 
+        items.add(UItem.asHeader(s("История", "History")));
+        items.add(UItem.asCheck(ID_PRESERVE_DELETED, s("Сохранять удалённое", "Keep deleted content")).setChecked(RecGramConfig.isPreserveDeleted()));
+        items.add(UItem.asShadow(s(
+                "Удалённые сообщения, фото, файлы и чаты останутся на этом устройстве и будут показаны серым. Удаление в Telegram выполняется как обычно. Уже сохранённые копии не удаляются при выключении опции.",
+                "Deleted messages, photos, files and chats will stay on this device and appear dimmed. They are still deleted from Telegram as usual. Turning this off does not erase copies that are already saved.")));
+
         boolean custom = ApiKeys.isCustom();
         items.add(UItem.asHeader(s("Защищённый контент", "Protected content")));
         items.add(UItem.asCheck(ID_SCREENSHOTS, s("Разрешить скриншоты", "Allow screenshots")).setChecked(RecGramConfig.isAllowScreenshots()));
@@ -109,6 +116,9 @@ public class RecGramSettingsActivity extends UniversalFragment {
             case ID_BYPASS:
                 presentFragment(new BypassActivity());
                 return;
+            case ID_PRESERVE_DELETED:
+                togglePreserveDeleted();
+                return;
             case ID_SCREENSHOTS:
                 toggleProtected(() -> RecGramConfig.setAllowScreenshots(!RecGramConfig.isAllowScreenshots()), !RecGramConfig.isAllowScreenshots());
                 return;
@@ -134,6 +144,25 @@ public class RecGramSettingsActivity extends UniversalFragment {
                 return;
         }
         listView.adapter.update(true);
+    }
+
+    private void togglePreserveDeleted() {
+        if (RecGramConfig.isPreserveDeleted()) {
+            RecGramConfig.setPreserveDeleted(false);
+            listView.adapter.update(true);
+            return;
+        }
+        AlertDialog.Builder b = new AlertDialog.Builder(getParentActivity());
+        b.setTitle(s("Сохранять удалённое", "Keep deleted content"));
+        b.setMessage(s(
+                "Сохранение удалённых сообщений и чатов может нарушать правила Telegram API (п. 1.4). Telegram может заблокировать ваш API-ключ. Включаете на свой риск.",
+                "Keeping deleted messages and chats may violate the Telegram API terms (section 1.4). Telegram may block your API key. Enable at your own risk."));
+        b.setPositiveButton(s("Понимаю", "I understand"), (d, w) -> {
+            RecGramConfig.setPreserveDeleted(true);
+            listView.adapter.update(true);
+        });
+        b.setNegativeButton(s("Отмена", "Cancel"), null);
+        showDialog(b.create());
     }
 
     /** Первое включение любой функции защищённого контента — с предупреждением. */

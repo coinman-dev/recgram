@@ -17,6 +17,7 @@ public class MessageCustomParamsHelper {
     public static boolean isEmpty(TLRPC.Message message) {
         return (
             !isCommentEncryptionPreparing(message) &&
+            !message.localDeleted &&
             message.voiceTranscription == null &&
             message.translatedVoiceTranscription == null &&
             !message.voiceTranscriptionOpen &&
@@ -40,6 +41,7 @@ public class MessageCustomParamsHelper {
     }
 
     public static void copyParams(TLRPC.Message fromMessage, TLRPC.Message toMessage) {
+        toMessage.localDeleted = fromMessage.localDeleted;
         toMessage.voiceTranscription = fromMessage.voiceTranscription;
         toMessage.voiceTranscriptionOpen = fromMessage.voiceTranscriptionOpen;
         toMessage.voiceTranscriptionFinal = fromMessage.voiceTranscriptionFinal;
@@ -121,6 +123,7 @@ public class MessageCustomParamsHelper {
 
             flags = setFlag(flags, FLAG_13, message.translatedRichMessage != null);
             flags = setFlag(flags, FLAG_14, isCommentEncryptionPreparing(message));
+            flags = setFlag(flags, FLAG_15, message.localDeleted);
         }
 
         @Override
@@ -178,6 +181,7 @@ public class MessageCustomParamsHelper {
         @Override
         public void readParams(InputSerializedData stream, boolean exception) {
             flags = stream.readInt32(true);
+            message.localDeleted = hasFlag(flags, FLAG_15);
             if (message.action instanceof TLRPC.TL_messageActionGramTransfer) {
                 final TLRPC.TL_messageActionGramTransfer action = (TLRPC.TL_messageActionGramTransfer) message.action;
                 // An update may carry ciphertext while storage still has the old local params.

@@ -787,6 +787,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
     }
 
     public void setDialog(TLRPC.Dialog dialog, int type, int folder) {
+        setAlpha(dialog.localDeleted ? 0.55f : 1f);
         if (currentDialogId != dialog.id) {
             if (statusDrawableAnimator != null) {
                 statusDrawableAnimator.removeAllListeners();
@@ -833,6 +834,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
     }
 
     public void setDialog(CustomDialog dialog) {
+        setAlpha(1f);
         customDialog = dialog;
         messageId = 0;
         update(0);
@@ -899,6 +901,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         lastDialogChangedTime = System.currentTimeMillis();
         message = messageObject;
         useMeForMyMessages = useMe;
+        setAlpha(1f);
         isDialogCell = false;
         lastMessageDate = date;
         currentEditDate = messageObject != null ? messageObject.messageOwner.edit_date : 0;
@@ -923,6 +926,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         lastDialogChangedTime = System.currentTimeMillis();
         message = messageObject;
         useMeForMyMessages = useMe;
+        setAlpha(1f);
         isDialogCell = false;
         lastMessageDate = date;
         currentEditDate = messageObject != null ? messageObject.messageOwner.edit_date : 0;

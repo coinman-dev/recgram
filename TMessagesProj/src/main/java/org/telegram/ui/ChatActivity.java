@@ -2873,6 +2873,7 @@ public class ChatActivity extends BaseFragment implements
                 .add(NotificationCenter.monoForumMessagesRead)
                 .add(NotificationCenter.botKeyboardDidLoad)
                 .add(NotificationCenter.removeAllMessagesFromDialog)
+                .add(NotificationCenter.recgramDialogMessagesDeleted)
                 .add(NotificationCenter.messagesReadContent)
                 .add(NotificationCenter.chatSearchResultsAvailable)
                 .add(NotificationCenter.chatSearchResultsLoading)
@@ -13300,7 +13301,11 @@ public class ChatActivity extends BaseFragment implements
                 topicsTabs.setAllTopicsHidden(false);
             }
             if (threadId == getThreadId()) {
-                clearHistory(false, null);
+                if (org.recgram.RecGramConfig.isPreserveDeleted()) {
+                    markLoadedMessagesAsDeleted(null);
+                } else {
+                    clearHistory(false, null);
+                }
                 chatAdapter.notifyDataSetChanged();
             }
         }, () -> {
@@ -23017,6 +23022,16 @@ public class ChatActivity extends BaseFragment implements
                 return;
             }
             int max_id = (Integer) args[1];
+            if (org.recgram.RecGramConfig.isPreserveDeleted()) {
+                ArrayList<Integer> preservedIds = new ArrayList<>();
+                for (MessageObject object : messages) {
+                    if (object != null && object.getId() > 0 && object.getId() <= max_id) {
+                        preservedIds.add(object.getId());
+                    }
+                }
+                markLoadedMessagesAsDeleted(preservedIds);
+                return;
+            }
             if (!pinnedMessageIds.isEmpty()) {
                 pinnedMessageIds.clear();
                 pinnedMessageObjects.clear();
@@ -23130,6 +23145,9 @@ public class ChatActivity extends BaseFragment implements
             if (scheduleNowDialog != null && selectedObject != null && markAsDeletedMessages.contains(selectedObject.getId())) {
                 scheduleNowDialog.dismiss();
                 scheduleNowDialog = null;
+            }
+            if (org.recgram.RecGramConfig.isPreserveDeleted() && !scheduled && !movedToScheduled && preserveDeletedMessages(markAsDeletedMessages, channelId)) {
+                return;
             }
             processDeletedMessages(markAsDeletedMessages, channelId, sent, !movedToScheduled);
             if (movedToScheduled && chatMode != ChatActivity.MODE_SCHEDULED) {
@@ -23589,6 +23607,11 @@ public class ChatActivity extends BaseFragment implements
                         }
                     }
                 }
+            }
+        } else if (id == NotificationCenter.recgramDialogMessagesDeleted) {
+            long did = (Long) args[0];
+            if (dialog_id == did) {
+                markLoadedMessagesAsDeleted(null);
             }
         } else if (id == NotificationCenter.removeAllMessagesFromDialog) {
             long did = (Long) args[0];
@@ -27113,6 +27136,48 @@ public class ChatActivity extends BaseFragment implements
             sponsoredMessagesCount++;
         }
         return sponsoredMessagesCount;
+    }
+
+    private boolean preserveDeletedMessages(ArrayList<Integer> markAsDeletedMessages, long channelId) {
+        if (ChatObject.isChannel(currentChat)) {
+            if (channelId != -dialog_id && (channelId != 0 || mergeDialogId == 0)) {
+                return false;
+            }
+        } else if (channelId != 0) {
+            return false;
+        }
+        markLoadedMessagesAsDeleted(markAsDeletedMessages);
+        return true;
+    }
+
+    private void markLoadedMessagesAsDeleted(ArrayList<Integer> markAsDeletedMessages) {
+        boolean updated = false;
+        for (MessageObject object : messages) {
+            if (object != null && object.messageOwner != null && (markAsDeletedMessages == null || markAsDeletedMessages.contains(object.getId()))) {
+                object.messageOwner.localDeleted = true;
+                updated = true;
+            }
+        }
+        if (chatAdapter != null && chatAdapter.filteredMessages != null) {
+            for (MessageObject object : chatAdapter.filteredMessages) {
+                if (object != null && object.messageOwner != null && (markAsDeletedMessages == null || markAsDeletedMessages.contains(object.getId()))) {
+                    object.messageOwner.localDeleted = true;
+                    updated = true;
+                }
+            }
+        }
+        if (updated) {
+            org.recgram.RecGramConfig.setHasPreservedDeleted();
+            if (chatAdapter != null) {
+                chatAdapter.notifyDataSetChanged(false);
+            }
+            if (messagesSearchAdapter != null) {
+                messagesSearchAdapter.notifyDataSetChanged();
+            }
+            if (chatListView != null) {
+                chatListView.invalidateViews();
+            }
+        }
     }
 
     private void processDeletedMessages(ArrayList<Integer> markAsDeletedMessages, long channelId, boolean sent) {
