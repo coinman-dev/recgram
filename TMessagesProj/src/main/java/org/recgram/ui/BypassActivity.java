@@ -11,6 +11,8 @@ import android.view.View;
 import android.widget.Toast;
 
 import org.recgram.bypass.Bypass;
+import org.recgram.bypass.AwgConfig;
+import org.recgram.bypass.SystemVpn;
 import org.recgram.bypass.Vless;
 import org.recgram.bypass.VlessConfig;
 import org.telegram.messenger.AndroidUtilities;
@@ -149,7 +151,7 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         SharedConfig.loadProxyList();
         VlessConfig activeVless = Vless.isActive() ? Vless.find(Vless.getSelectedId()) : null;
-        String current = activeVless != null ? "VLESS: " + activeVless.name
+        String current = activeVless != null ? kind(activeVless) + ": " + activeVless.name
                 : SharedConfig.isProxyEnabled() && SharedConfig.currentProxy != null
                 ? SharedConfig.currentProxy.settings.getAddress() + ":" + SharedConfig.currentProxy.settings.getPort()
                 : s("выключен", "off");
@@ -157,6 +159,10 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
         // статус связи — сверху, на обоих экранах
         items.add(UItem.asHeader(s("Связь с Telegram", "Connection to Telegram")));
         items.add(UItem.asButton(0, connectionText()));
+        if (SystemVpn.isActive()) {
+            items.add(UItem.asShadow("🔒 " + s("На телефоне включён VPN, и RecGram уже идёт через него. Прокси и встроенный туннель ниже не нужны: два VPN подряд только замедлят связь.",
+                    "A VPN is on on this phone and RecGram already goes through it. The proxies and the built-in tunnel below are not needed: two VPNs in a row only slow things down.")));
+        }
         String iso = Bypass.countryIso();
         boolean blocking = Bypass.isBlockingCountry(iso);
         if (setup) {
@@ -185,8 +191,8 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             items.add(UItem.asShadow("⏳ " + checkProgress));
         }
         items.add(UItem.asShadow((status != null ? status + "\n\n" : "") + s(
-                "Блокировку Telegram по адресам серверов обходит только прокси. Лучше всего работает MTProto-прокси с маскировкой под HTTPS (ссылка с секретом, начинающимся на ee). Импорт понимает ссылки tg://proxy, t.me/proxy, tg://socks, t.me/socks и vless:// — сразу много из скопированного текста. Подписка — ссылка на страницу или файл со списком таких ссылок.",
-                "Only a proxy gets around blocking of Telegram server addresses. An MTProto proxy disguised as HTTPS works best (a link with a secret starting with ee). Import understands tg://proxy, t.me/proxy, tg://socks, t.me/socks and vless:// links — many at once from copied text. A subscription is a link to a page or file with such links.")));
+                "Блокировку Telegram по адресам серверов обходит только прокси. Лучше всего работает MTProto-прокси с маскировкой под HTTPS (ссылка с секретом, начинающимся на ee). Импорт понимает ссылки tg://proxy, t.me/proxy, tg://socks, t.me/socks, vless://, vpn:// и конфиги AmneziaWG — сразу много из скопированного текста. Подписка — ссылка на страницу или файл со списком таких ссылок.",
+                "Only a proxy gets around blocking of Telegram server addresses. An MTProto proxy disguised as HTTPS works best (a link with a secret starting with ee). Import understands tg://proxy, t.me/proxy, tg://socks, t.me/socks, vless:// and vpn:// links and AmneziaWG configs — many at once from copied text. A subscription is a link to a page or file with such links.")));
 
         fillVless(items);
 
@@ -224,21 +230,31 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
         }
     }
 
+    /** «VLESS» или «AmneziaWG» — для подписей. */
+    private static String kind(VlessConfig c) {
+        return c.isAwg() ? "AmneziaWG" : "VLESS";
+    }
+
     private void fillVless(ArrayList<UItem> items) {
-        items.add(UItem.asHeader(s("VLESS-сервер (Xray)", "VLESS server (Xray)")));
-        if (!Vless.isAvailable()) {
-            items.add(UItem.asShadow(s("Встроенный Xray не входит в эту сборку RecGram.", "The built-in Xray is not part of this RecGram build.")));
+        items.add(UItem.asHeader(s("Свой сервер: VLESS или AmneziaWG", "Own server: VLESS or AmneziaWG")));
+        if (!Vless.isAvailable() && !Vless.isAwgAvailable()) {
+            items.add(UItem.asShadow(s("Встроенные Xray и AmneziaWG не входят в эту сборку RecGram.", "The built-in Xray and AmneziaWG are not part of this RecGram build.")));
             return;
         }
         vlessList = Vless.list();
         String sel = Vless.getSelectedId();
         boolean enabled = Vless.isEnabled();
         String err = Vless.getLastError();
+        VlessConfig selected = Vless.find(sel);
         String state;
-        if (vlessStarting || enabled && !Vless.isReady() && err == null) {
-            state = "⏳ " + s("Запускаю Xray…", "Starting Xray…");
-        } else if (Vless.isActive() && Vless.isReady()) {
-            state = "✅ " + s("Telegram идёт через VLESS", "Telegram goes through VLESS");
+        if (Vless.isPausedByVpn()) {
+            // «Включён …, дождитесь связи» после паузы уже неправда
+            if (vlessStatus != null && vlessStatus.startsWith(s("Включён «", "Using \""))) vlessStatus = null;
+            state = "⏸ "+ s("Ждёт: на телефоне включён VPN. Включится сам, когда VPN выключат", "Waiting: a VPN is on on this phone. Starts by itself when the VPN is turned off");
+        } else if (vlessStarting || enabled && !Vless.isReady() && err == null) {
+            state = "⏳ " + s("Запускаю туннель…", "Starting the tunnel…");
+        } else if (Vless.isActive() && Vless.isReady() && selected != null) {
+            state = "✅ " + s("Telegram идёт через ", "Telegram goes through ") + kind(selected);
         } else if (enabled && err != null) {
             state = "⚠️ " + err;
         } else {
@@ -250,8 +266,10 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             boolean on = enabled && c.id.equals(sel);
             // пинг первым: длинное значение справа обрезается
             String ping = c.ping > 0 ? c.ping + s(" мс · ", " ms · ") : c.ping == 0 ? s("нет связи · ", "no link · ") : "";
+            String info = c.summary().replaceFirst("^vless · ", "");
+            if (!Vless.canRun(c)) info += s(" · не входит в сборку", " · not in this build");
             // имя сверху, пинг и тип строкой ниже — обе строки на всю ширину
-            items.add(UItem.asRadio2(ID_VLESS_BASE + i, c.name, ping + c.summary().replaceFirst("^vless · ", "")).setChecked(on));
+            items.add(UItem.asRadio2(ID_VLESS_BASE + i, c.name, ping + info).setChecked(on));
         }
         // одна строка: слева «Импорт из файла», справа «Сканировать QR» (выбор — по месту нажатия)
         items.add(UItem.asButton(ID_VLESS_FILE, s("Импорт из файла", "Import from file"), s("Сканировать QR", "Scan QR")));
@@ -259,16 +277,18 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             items.add(UItem.asButton(ID_VLESS_CHECK, vlessChecking ? "⏳ " + s("Проверяю серверы…", "Checking servers…")
                     : s("Проверить серверы", "Check servers")).accent());
         }
-        items.add(UItem.asButton(ID_VLESS_LOG, s("Журнал Xray", "Xray log")));
+        items.add(UItem.asButton(ID_VLESS_LOG, s("Журнал туннеля", "Tunnel log")));
         if (enabled) {
-            items.add(UItem.asButton(ID_VLESS_OFF, s("Выключить VLESS", "Turn VLESS off")).red());
+            items.add(UItem.asButton(ID_VLESS_OFF, s("Выключить туннель", "Turn the tunnel off")).red());
         }
         items.add(UItem.asShadow((vlessStatus != null ? vlessStatus + "\n\n" : "") + s(
-                "Свой зарубежный сервер VLESS (Reality, xhttp, ws, gRPC…) — самый надёжный обход, если Telegram блокируют по адресам. RecGram запускает Xray внутри себя: через сервер идёт только трафик RecGram, системный VPN не нужен.\n"
-                        + "Добавить сервер: скопируйте ссылку vless:// (в v2RayTun/v2rayNG — «Поделиться») и нажмите «Импорт из буфера обмена» выше, отсканируйте QR-код сервера либо выберите файл — JSON-конфиг Xray или shared_preferences.json из v2RayTun. Подписка выше тоже понимает ссылки vless://.\n"
+                "Свой зарубежный сервер — самый надёжный обход, если Telegram блокируют по адресам. RecGram запускает туннель внутри себя: через сервер идёт только трафик RecGram, системный VPN не нужен. Если VPN на телефоне уже включён, туннель ждёт и включается сам, когда VPN выключат.\n"
+                        + "VLESS (Reality, xhttp, ws, gRPC…): скопируйте ссылку vless:// (в v2RayTun/v2rayNG — «Поделиться») и нажмите «Импорт из буфера обмена» выше, отсканируйте QR-код либо выберите файл — JSON-конфиг Xray или shared_preferences.json из v2RayTun.\n"
+                        + "AmneziaWG и WireGuard: файл .conf (в AmneziaWG — «Экспорт» туннеля), его текст или ссылка vpn:// из Amnezia — из буфера обмена, файлом или QR-кодом.\n"
                         + "Нажмите на сервер, чтобы включить, переименовать или удалить. Звонки Telegram через прокси не идут.",
-                "Your own VLESS server abroad (Reality, xhttp, ws, gRPC…) is the most reliable bypass when Telegram is blocked by address. RecGram runs Xray inside itself: only RecGram traffic goes through the server, no system VPN is needed.\n"
-                        + "To add a server, copy a vless:// link (\"Share\" in v2RayTun/v2rayNG) and tap \"Import from clipboard\" above, scan the server QR code, or pick a file: an Xray JSON config or shared_preferences.json from v2RayTun. The subscription above also understands vless:// links.\n"
+                "Your own server abroad is the most reliable bypass when Telegram is blocked by address. RecGram runs the tunnel inside itself: only RecGram traffic goes through the server, no system VPN is needed. If a VPN is already on on the phone, the tunnel waits and starts by itself when the VPN is turned off.\n"
+                        + "VLESS (Reality, xhttp, ws, gRPC…): copy a vless:// link (\"Share\" in v2RayTun/v2rayNG) and tap \"Import from clipboard\" above, scan the QR code, or pick a file: an Xray JSON config or shared_preferences.json from v2RayTun.\n"
+                        + "AmneziaWG and WireGuard: a .conf file (\"Export\" in AmneziaWG), its text or a vpn:// link from Amnezia — from the clipboard, a file or a QR code.\n"
                         + "Tap a server to turn it on, rename or delete it. Telegram calls do not go through proxies.")));
     }
 
@@ -294,7 +314,8 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
                     Vless.enable(c, ok -> {
                         vlessStarting = false;
                         vlessStatus = ok ? s("Включён «", "Using \"") + c.name + s("». Дождитесь «Связь есть» вверху.", "\". Wait for \"Connected\" at the top.")
-                                : s("Не удалось запустить Xray: ", "Could not start Xray: ") + Vless.getLastError();
+                                : Vless.isPausedByVpn() ? s("Выбран «", "Selected \"") + c.name + s("». На телефоне включён VPN — туннель включится сам, когда VPN выключат.", "\". A VPN is on on this phone — the tunnel starts by itself when the VPN is turned off.")
+                                : s("Не удалось запустить ", "Could not start ") + kind(c) + ": " + Vless.getLastError();
                         update();
                     });
                 }
@@ -340,7 +361,7 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
         showDialog(b.create());
     }
 
-    /** QR со ссылкой vless:// (или tg://proxy) — встроенный сканер Telegram. */
+    /** QR со ссылкой vless://, конфигом AmneziaWG (или tg://proxy) — встроенный сканер Telegram. */
     private void scanQr(Context ctx) {
         if (android.os.Build.VERSION.SDK_INT >= 23
                 && ctx.checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -354,7 +375,7 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
                     public void didFindQr(String text) {
                         int n = Bypass.importLinks(VlessConfig.maybeBase64(text));
                         vlessStatus = n > 0 ? s("Добавлено из QR: ", "Added from QR: ") + n
-                                : s("В QR-коде нет новой ссылки vless:// или прокси.", "The QR code has no new vless:// or proxy link.");
+                                : s("В QR-коде нет нового сервера или прокси.", "The QR code has no new server or proxy.");
                         update();
                     }
                 });
@@ -363,7 +384,7 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
     private void showVlessLog(Context ctx) {
         String log = Vless.logText();
         AlertDialog.Builder b = new AlertDialog.Builder(ctx);
-        b.setTitle(s("Журнал Xray", "Xray log"));
+        b.setTitle(s("Журнал туннеля", "Tunnel log"));
         b.setMessage(log.isEmpty() ? s("Пусто.", "Empty.") : log);
         b.setPositiveButton("OK", null);
         showDialog(b.create());
@@ -383,13 +404,26 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             while (in != null && (n = in.read(buf)) > 0 && out.size() < 4 * 1024 * 1024) {
                 out.write(buf, 0, n);
             }
-            int added = Bypass.importLinks(VlessConfig.maybeBase64(out.toString("UTF-8")));
+            String text = out.toString("UTF-8");
+            String fileName = displayName(ctx, data.getData());
+            if (AwgConfig.isConf(text) && fileName != null && !text.matches("(?is).*#\\s*Name\\s*=.*")) {
+                text = "# Name = " + fileName.replaceFirst("(?i)\\.conf$", "") + "\n" + text;
+            }
+            int added = Bypass.importLinks(VlessConfig.maybeBase64(text));
             vlessStatus = added > 0 ? s("Добавлено из файла: ", "Added from file: ") + added
                     : s("В файле нет новых серверов.", "No new servers in the file.");
         } catch (Throwable e) {
             vlessStatus = s("Не удалось прочитать файл.", "Could not read the file.");
         }
         update();
+    }
+
+    private static String displayName(Context ctx, android.net.Uri uri) {
+        try (android.database.Cursor c = ctx.getContentResolver().query(uri, new String[]{android.provider.OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+            return c != null && c.moveToFirst() ? c.getString(0) : null;
+        } catch (Throwable e) {
+            return null;
+        }
     }
 
     private static String shortUrl(String url) {
@@ -465,7 +499,7 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             CharSequence text = clip != null && clip.getItemCount() > 0 ? clip.getItemAt(0).coerceToText(ctx) : null;
             int n = Bypass.importLinks(text == null ? null : text.toString());
             status = n > 0 ? s("Добавлено прокси и серверов: ", "Proxies and servers added: ") + n
-                    : s("В буфере обмена нет новых ссылок на прокси или серверы VLESS.", "No new proxy or VLESS links in the clipboard.");
+                    : s("В буфере обмена нет новых прокси или серверов VLESS/AmneziaWG.", "No new proxies or VLESS/AmneziaWG servers in the clipboard.");
             update();
         } else if (id == ID_SUBSCRIPTION) {
             showSubscriptionDialog(ctx);

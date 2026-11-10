@@ -107,7 +107,8 @@ VPN is needed and other apps use the network as usual.
   provider equipment cannot read the site name in it while the server still
   gets the whole packet. Modes: "Split packet", "Split + disorder"
   (recommended), "Split + OOB byte" and automatic selection. It does not help
-  when Telegram server addresses are blocked — that needs a proxy or VLESS.
+  when Telegram server addresses are blocked — that needs a proxy, VLESS or
+  AmneziaWG.
 - **VLESS server (Xray)** is the most reliable bypass when Telegram is blocked
   by address. RecGram runs [Xray-core](https://github.com/XTLS/Xray-core) inside:
   VLESS with Reality or TLS over xhttp, ws, httpupgrade, gRPC or raw. Add a
@@ -117,8 +118,18 @@ VPN is needed and other apps use the network as usual.
   shows the ping to Telegram through each server; tap a server to turn it on.
   Xray runs as a separate process together with RecGram and listens only on
   `127.0.0.1` with a random login and password; server settings are never
-  written to disk, and the Xray log (**Xray log**) contains no uuids and no
+  written to disk, and the log (**Tunnel log**) contains no uuids and no
   addresses Telegram connects to.
+- **AmneziaWG and WireGuard** live in the same server list. The
+  [amneziawg-go](https://github.com/amnezia-vpn/amneziawg-go) tunnel runs inside
+  the RecGram process without a system VPN and supports the AmneziaWG 2.0
+  obfuscation parameters (Jc, Jmin, Jmax, S1–S4, H1–H4 with ranges, I1–I5).
+  Add a server with a `.conf` file ("Export" in AmneziaWG), its text from the
+  clipboard, a QR code or a `vpn://` link from the Amnezia app.
+- **System VPN.** If a VPN (v2RayTun, AmneziaWG and so on) is already on on the
+  phone and RecGram goes through it, the section says so and the built-in
+  tunnel does not start: two VPNs in a row only slow things down. When the VPN
+  is turned off, the tunnel starts by itself.
 - The first start has a **Connecting to Telegram** step with the same
   settings. In countries that block Telegram it does not continue without a
   connection.
@@ -134,9 +145,9 @@ VPN is needed and other apps use the network as usual.
 - Calls are recorded on your phone only: your microphone and what you hear.
   Group calls are recorded without video.
 - Secret chats cannot be exported.
-- Telegram calls do not go through proxies or VLESS — this is how Telegram
+- Telegram calls do not go through proxies, VLESS or AmneziaWG — this is how Telegram
   itself works; messages, media and sign-in go through them fully.
-- Xray adds about 12 MB to the APK per ABI.
+- Xray adds about 12 MB to the APK per ABI, AmneziaWG about 3 MB.
 - Notifications depend on the background connection; allow RecGram to run
   without battery restrictions, otherwise Android may close it.
 - Telegram Premium cannot be bought in unofficial apps, but works if bought
@@ -166,6 +177,7 @@ submodules:
 ```
 git submodule update --init --recursive
 recgram/tools/build_xray.sh arm64-v8a,armeabi-v7a
+recgram/tools/build_awg.sh arm64-v8a,armeabi-v7a
 ./gradlew :TMessagesProj_App:assembleAfatRelease -PrecgramAbis=arm64-v8a,armeabi-v7a
 ```
 
@@ -183,6 +195,14 @@ kept in git). Android extracts it with the other native libraries and RecGram
 runs it as a separate process. If you skip this step the app still builds, and
 the VLESS section says that Xray is not part of the build.
 
+`build_awg.sh` likewise builds `libawg.so` from `recgram/awg`, a small Go
+program: an amneziawg-go tunnel in the gVisor userspace stack plus a SOCKS5
+server on `127.0.0.1` for RecGram. The amneziawg-go version is pinned in
+`recgram/awg/go.mod` and `go.sum`.
+
+From Windows, one command does all of this (updating the sources in WSL first):
+`python -I recgram/tools/build_apk.py` (details at the top of the script).
+
 New code lives in the `org.recgram` package
 (`TMessagesProj/src/main/java/org/recgram`). Telegram sources contain only small
 hooks, each marked with a `// RecGram` comment; the scripts that apply them are
@@ -194,7 +214,7 @@ commit `7be672ead` (Telegram 13.2.1). PNG icons for Android 6–7 are drawn by
 
 Pushing a tag such as `v1.0.0` or `v1.0.0-beta.1` starts the
 [release workflow](.github/workflows/release.yml). GitHub builds a signed APK
-for arm64-v8a and armeabi-v7a (with Xray-core built from source), checks that it is signed with the RecGram
+for arm64-v8a and armeabi-v7a (with Xray-core and AmneziaWG built from source), checks that it is signed with the RecGram
 certificate, and publishes `RecGram-<tag>.apk`, `RecGram.apk` and
 `SHA256SUMS.txt`. A tag with a suffix is marked as a prerelease. Run by hand,
 the workflow builds the APK as an artifact kept for three days and publishes
@@ -210,6 +230,9 @@ Third-party parts:
 - [Xray-core](https://github.com/XTLS/Xray-core) (Project X) — Mozilla Public
   License 2.0; shipped in the APK as a separate executable built unmodified
   from the source tag set in `recgram/tools/build_xray.sh`;
+- [amneziawg-go](https://github.com/amnezia-vpn/amneziawg-go) — MIT,
+  [gVisor](https://github.com/google/gvisor) — Apache License 2.0; built into
+  `libawg.so` (`recgram/awg`);
 - the OpenStreetMap map provider is adapted from
   [Nullgram](https://github.com/qwq233/Nullgram) /
   [Nnngram](https://github.com/NextAlone/Nnngram) (GPL-2.0-or-later);

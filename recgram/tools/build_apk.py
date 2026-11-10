@@ -6,7 +6,7 @@
     python -I recgram/tools/build_apk.py              arm64-v8a → builds/RecGram-release-arm64.apk
     python -I recgram/tools/build_apk.py --install    то же и установить на телефон (install_phone.py)
     python -I recgram/tools/build_apk.py --abis arm64-v8a,armeabi-v7a   → builds/RecGram-release.apk
-    python -I recgram/tools/build_apk.py --xray       пересобрать Xray, даже если он уже есть
+    python -I recgram/tools/build_apk.py --xray       пересобрать Xray и AmneziaWG, даже если они уже есть
     python -I recgram/tools/build_apk.py --force      собрать, даже если есть незапушенные правки
 
 Что делает:
@@ -14,7 +14,8 @@
    и незапушенные правки в APK не попадут — скрипт останавливается и подсказывает, что сделать.
 2. В WSL (~/Development/recgram): git pull --ff-only, обновление подмодулей.
 3. Xray-core (VLESS): recgram/tools/build_xray.sh, если libxray.so нет для нужного ABI
-   или в скрипте сменилась версия (XRAY_TAG).
+   или в скрипте сменилась версия (XRAY_TAG); AmneziaWG: recgram/tools/build_awg.sh, если нет libawg.so
+   или сменились исходники recgram/awg.
 4. Gradle :TMessagesProj_App:assembleAfatRelease — на экран только основные шаги и ошибки,
    полный журнал — ~/Development/recgram-logs/build.log в WSL.
 5. Копирует APK в builds/ и печатает его размер и SHA-256.
@@ -118,7 +119,7 @@ git log --oneline -1""", stream=True)
     if code:
         sys.exit("Не удалось обновить WSL-копию (см. вывод выше).")
 
-    print("3/5 Xray-core (VLESS)")
+    print("3/5 Xray-core (VLESS) и AmneziaWG")
     tag_line = (ROOT / "recgram/tools/build_xray.sh").read_text(encoding="utf-8")
     m = re.search(r'XRAY_TAG="\$\{XRAY_TAG:-([^}]+)\}"', tag_line)
     tag = m.group(1) if m else "?"
@@ -138,6 +139,28 @@ for abi in {' '.join(need)}; do rm -f TMessagesProj/src/main/jniLibs/.xray-*-$ab
             sys.exit("Xray не собрался (см. вывод выше).")
     else:
         print(f"   Xray {tag} уже собран для {', '.join(abis)}")
+
+    # AmneziaWG: пересобираем, если сменились исходники recgram/awg (метка — хэш main.go, go.mod, go.sum)
+    h = hashlib.sha256()
+    for f in ("main.go", "go.mod", "go.sum"):
+        h.update((ROOT / "recgram/awg" / f).read_bytes())
+    awg = h.hexdigest()[:12]
+    awg_stamp = f"{WSL_REPO}/TMessagesProj/src/main/jniLibs/.awg-{awg}"
+    need = []
+    for abi in abis:
+        code, _ = wsl_bash(f"test -s {WSL_REPO}/TMessagesProj/src/main/jniLibs/{abi}/libawg.so && test -f {awg_stamp}-{abi}")
+        if code or a.xray:
+            need.append(abi)
+    if need:
+        print(f"   собираю AmneziaWG для {', '.join(need)}")
+        code, _ = wsl_bash(f"""set -e
+cd {WSL_REPO}
+recgram/tools/build_awg.sh {','.join(need)} 2>&1 | grep -v '^go: downloading'
+for abi in {' '.join(need)}; do rm -f TMessagesProj/src/main/jniLibs/.awg-*-$abi; touch {awg_stamp}-$abi; done""", stream=True)
+        if code:
+            sys.exit("AmneziaWG не собрался (см. вывод выше).")
+    else:
+        print(f"   AmneziaWG уже собран для {', '.join(abis)}")
 
     print("4/5 Gradle :TMessagesProj_App:assembleAfatRelease — это 5–10 минут, после смены нативного кода дольше")
     keep = r"^> Task :TMessagesProj_App:(compileAfatReleaseJavaWithJavac|minifyAfatReleaseWithR8|packageAfatRelease)|^> Task .*externalNativeBuild|error:|FAILED|BUILD (SUCCESSFUL|FAILED)|What went wrong|^\* What|^e: "

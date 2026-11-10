@@ -60,18 +60,21 @@ jobs:
           go-version: stable
           cache: false
 
-      - name: Кэш Go (Xray-core)
+      - name: Кэш Go (Xray-core, AmneziaWG)
         uses: actions/cache@v4
         with:
           path: |
             ~/go/pkg/mod
             ~/.cache/go-build
             ~/.cache/recgram-xray
-          key: xray-${{ runner.os }}-${{ hashFiles('recgram/tools/build_xray.sh') }}
+          key: xray-${{ runner.os }}-${{ hashFiles('recgram/tools/build_xray.sh', 'recgram/awg/go.sum') }}
           restore-keys: xray-${{ runner.os }}-
 
       - name: Xray-core
         run: recgram/tools/build_xray.sh "$ABIS"
+
+      - name: AmneziaWG
+        run: recgram/tools/build_awg.sh "$ABIS"
 
       - name: Ключ подписи
         env:

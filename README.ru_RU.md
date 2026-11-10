@@ -104,7 +104,7 @@ Telegram Desktop: страницы `messages.html`, `result.json` и папки 
   оборудование провайдера не видит в нём имя сайта, а сервер получает пакет
   целиком. Режимы: «Разрез пакета», «Разрез + обратный порядок»
   (рекомендуется), «Разрез + срочный байт» и автоподбор. От блокировки по
-  адресам серверов Telegram это не спасает — нужен прокси или VLESS.
+  адресам серверов Telegram это не спасает — нужен прокси, VLESS или AmneziaWG.
 - **VLESS-сервер (Xray)** — самый надёжный обход, если Telegram блокируют по
   адресам. Внутри RecGram работает [Xray-core](https://github.com/XTLS/Xray-core):
   VLESS с Reality или TLS и транспортами xhttp, ws, httpupgrade, gRPC, raw.
@@ -114,8 +114,18 @@ Telegram Desktop: страницы `messages.html`, `result.json` и папки 
   серверы** показывает пинг до Telegram через каждый сервер, нажатие на сервер
   включает его. Xray запускается отдельным процессом вместе с RecGram и слушает
   только `127.0.0.1` со случайным логином и паролем; настройки сервера на диск
-  не пишутся, журнал Xray (кнопка **Журнал Xray**) не содержит uuid и адресов,
+  не пишутся, журнал (кнопка **Журнал туннеля**) не содержит uuid и адресов,
   куда ходит Telegram.
+- **AmneziaWG и WireGuard** — в том же списке серверов. Туннель
+  [amneziawg-go](https://github.com/amnezia-vpn/amneziawg-go) работает внутри
+  процесса RecGram, без системного VPN, и поддерживает параметры обфускации
+  AmneziaWG 2.0 (Jc, Jmin, Jmax, S1–S4, H1–H4 с диапазонами, I1–I5). Добавить
+  сервер можно файлом `.conf` (в AmneziaWG — «Экспорт» туннеля), его текстом
+  из буфера обмена, QR-кодом или ссылкой `vpn://` из приложения Amnezia.
+- **Системный VPN.** Если на телефоне уже включён VPN (v2RayTun, AmneziaWG и
+  т. п.) и RecGram идёт через него, раздел об этом пишет, а встроенный туннель
+  не запускается: два VPN подряд только замедляют связь. Когда VPN выключают,
+  туннель включается сам.
 - При первом запуске есть шаг **Подключение к Telegram** с этими же
   настройками. В странах, где Telegram блокируют, дальше без связи не пустит.
 
@@ -130,9 +140,9 @@ Telegram Desktop: страницы `messages.html`, `result.json` и папки 
 - Записывается только то, что есть на вашем телефоне: ваш микрофон и то, что
   вы слышите. Групповые звонки записываются без видео.
 - Секретные чаты не экспортируются.
-- Звонки Telegram не идут через прокси и VLESS — так устроен сам Telegram;
+- Звонки Telegram не идут через прокси, VLESS и AmneziaWG — так устроен сам Telegram;
   сообщения, медиа и вход работают через них полностью.
-- Xray добавляет к APK около 12 МБ на архитектуру.
+- Xray добавляет к APK около 12 МБ на архитектуру, AmneziaWG — около 3 МБ.
 - Уведомления зависят от фонового соединения: разрешите RecGram работу без
   ограничений батареи, иначе Android может его закрыть.
 - Telegram Premium в неофициальных приложениях не купить, но купленный в
@@ -160,6 +170,7 @@ Telegram Desktop: страницы `messages.html`, `result.json` и папки 
 ```
 git submodule update --init --recursive
 recgram/tools/build_xray.sh arm64-v8a,armeabi-v7a
+recgram/tools/build_awg.sh arm64-v8a,armeabi-v7a
 ./gradlew :TMessagesProj_App:assembleAfatRelease -PrecgramAbis=arm64-v8a,armeabi-v7a
 ```
 
@@ -176,6 +187,14 @@ Android распаковывает его вместе с остальными �
 его отдельным процессом. Если шаг пропустить, приложение соберётся, а раздел
 VLESS покажет, что Xray не входит в сборку.
 
+`build_awg.sh` так же собирает `libawg.so` из `recgram/awg` — небольшой
+программы на Go: туннель amneziawg-go в userspace-стеке gVisor и SOCKS5 на
+`127.0.0.1` для RecGram. Версия amneziawg-go закреплена в `recgram/awg/go.mod`
+и `go.sum`.
+
+Из Windows всё это (с обновлением исходников в WSL) делает одна команда:
+`python -I recgram/tools/build_apk.py` (подробности — в начале скрипта).
+
 Новый код — в пакете `org.recgram` (`TMessagesProj/src/main/java/org/recgram`).
 В исходники Telegram внесены только точечные вызовы, каждый отмечен
 комментарием `// RecGram`; скрипты, которыми они вносятся, — в
@@ -187,7 +206,7 @@ VLESS покажет, что Xray не входит в сборку.
 
 Тег вида `v1.0.0` или `v1.0.0-beta.1` запускает
 [workflow релиза](.github/workflows/release.yml). GitHub собирает подписанный APK
-для arm64-v8a и armeabi-v7a (вместе с Xray-core из исходников), проверяет, что он подписан сертификатом RecGram, и
+для arm64-v8a и armeabi-v7a (вместе с Xray-core и AmneziaWG из исходников), проверяет, что он подписан сертификатом RecGram, и
 публикует `RecGram-<тег>.apk`, `RecGram.apk` и `SHA256SUMS.txt`. Тег с суффиксом
 публикуется как пререлиз. Ручной запуск собирает APK как артефакт на три дня и
 ничего не публикует.
@@ -202,6 +221,9 @@ RecGram — форк Telegram for Android (Nikolai Kudashov и команда Te
 - [Xray-core](https://github.com/XTLS/Xray-core) (Project X) — Mozilla Public
   License 2.0; входит в APK отдельным исполняемым файлом, собранным без
   изменений из исходников тега, указанного в `recgram/tools/build_xray.sh`;
+- [amneziawg-go](https://github.com/amnezia-vpn/amneziawg-go) — MIT,
+  [gVisor](https://github.com/google/gvisor) — Apache License 2.0; входят в
+  `libawg.so` (`recgram/awg`);
 - провайдер карт OpenStreetMap адаптирован из
   [Nullgram](https://github.com/qwq233/Nullgram) /
   [Nnngram](https://github.com/NextAlone/Nnngram) (GPL-2.0-or-later);

@@ -42,8 +42,19 @@ public final class VlessConfig {
         return outbound.optString("protocol", "?");
     }
 
+    /** Сервер AmneziaWG/WireGuard (запускается libawg.so), а не Xray. */
+    public boolean isAwg() {
+        return AwgConfig.isAwg(outbound);
+    }
+
+    /** Текст .conf для AmneziaWG. */
+    String awgConf() {
+        return outbound.optString("conf");
+    }
+
     /** Адрес сервера (для сравнения дубликатов и показа): host:port. */
     public String address() {
+        if (isAwg()) return AwgConfig.endpoint(awgConf());
         JSONObject s = outbound.optJSONObject("settings");
         if (s == null) return "";
         JSONObject srv = firstServer(s);
@@ -55,6 +66,7 @@ public final class VlessConfig {
 
     /** Кратко: протокол · транспорт · защита, например «vless · xhttp · reality». */
     public String summary() {
+        if (isAwg()) return AwgConfig.summary(awgConf());
         JSONObject ss = outbound.optJSONObject("streamSettings");
         String net = ss != null ? ss.optString("network", "tcp") : "tcp";
         String sec = ss != null ? ss.optString("security", "none") : "none";
@@ -101,13 +113,17 @@ public final class VlessConfig {
     private static final String[] PROTOCOLS = {"vless", "vmess", "trojan", "shadowsocks", "socks", "http", "hysteria", "wireguard"};
 
     public static boolean containsLinks(String text) {
-        return text != null && VLESS_LINK.matcher(text).find();
+        return text != null && (VLESS_LINK.matcher(text).find() || AwgConfig.looksLike(text));
     }
 
-    /** Все серверы из текста: ссылки vless:// и/или JSON (outbound, конфиг Xray, v2RayTun). */
+    /**
+     * Все серверы из текста: ссылки vless:// и/или JSON (outbound, конфиг Xray, v2RayTun),
+     * конфиги AmneziaWG/WireGuard (.conf) и ссылки vpn:// из Amnezia.
+     */
     public static ArrayList<VlessConfig> parseAll(String text) {
         ArrayList<VlessConfig> out = new ArrayList<>();
         if (TextUtils.isEmpty(text)) return out;
+        AwgConfig.parseAll(text, out);
         String t = text.trim();
         if (t.startsWith("{") || t.startsWith("[")) {
             try {
@@ -345,7 +361,7 @@ public final class VlessConfig {
     public static String maybeBase64(String body) {
         if (body == null) return null;
         String t = body.trim();
-        if (t.contains("://") || t.startsWith("{") || t.startsWith("[")) return body;
+        if (t.contains("://") || t.startsWith("{") || t.startsWith("[") || AwgConfig.looksLike(t)) return body;
         try {
             return new String(Base64.decode(t, Base64.DEFAULT), StandardCharsets.UTF_8);
         } catch (Throwable e) {

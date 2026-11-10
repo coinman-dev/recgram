@@ -38,10 +38,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Встроенный Xray-клиент (VLESS/Reality/xhttp и др.): только трафик RecGram, без системного VPN.
- * Xray (libxray.so, собирается recgram/tools/build_xray.sh) запускается отдельным процессом с inbound SOCKS5
- * на 127.0.0.1 со случайным логином и паролем; сетевой модуль Telegram ходит через этот SOCKS5.
- * Конфиг передаётся через stdin — на диск не пишется.
+ * Встроенный клиент обхода блокировок: только трафик RecGram, без системного VPN.
+ * VLESS/Reality/xhttp и др. — Xray (libxray.so, recgram/tools/build_xray.sh), AmneziaWG/WireGuard —
+ * libawg.so (recgram/awg, recgram/tools/build_awg.sh). Выбранный сервер запускается отдельным процессом
+ * с SOCKS5 на 127.0.0.1 со случайным логином и паролем; сетевой модуль Telegram ходит через этот SOCKS5.
+ * Конфиг передаётся через stdin — на диск не пишется. Если на телефоне уже включён системный VPN,
+ * туннель не запускается (см. {@link SystemVpn}) и включается сам, когда VPN выключат.
  */
 public final class Vless {
 
@@ -49,6 +51,7 @@ public final class Vless {
     }
 
     private static final String LIB = "libxray.so";
+    private static final String AWG_LIB = "libawg.so";
     private static final ExecutorService EXEC = Executors.newSingleThreadExecutor(r -> new Thread(r, "RecGramXray"));
     private static final ArrayDeque<String> LOG = new ArrayDeque<>();
 
@@ -58,6 +61,7 @@ public final class Vless {
     private static volatile boolean ready;
     private static int restarts;
     private static boolean observing;
+    private static volatile boolean pausedByVpn;
 
     private static SharedPreferences prefs() {
         return ApplicationLoader.applicationContext.getSharedPreferences("recgram_vless", Context.MODE_PRIVATE);
@@ -147,13 +151,32 @@ public final class Vless {
 
     // ------------------------------------------------------------------ состояние
 
+    /** В сборке есть Xray (VLESS). */
     public static boolean isAvailable() {
-        File f = binary();
+        return exists(LIB);
+    }
+
+    /** В сборке есть клиент AmneziaWG. */
+    public static boolean isAwgAvailable() {
+        return exists(AWG_LIB);
+    }
+
+    public static boolean canRun(VlessConfig c) {
+        return c.isAwg() ? isAwgAvailable() : isAvailable();
+    }
+
+    private static boolean exists(String lib) {
+        File f = binary(lib);
         return f.exists() && f.canExecute();
     }
 
-    private static File binary() {
-        return new File(ApplicationLoader.applicationContext.getApplicationInfo().nativeLibraryDir, LIB);
+    private static File binary(String lib) {
+        return new File(ApplicationLoader.applicationContext.getApplicationInfo().nativeLibraryDir, lib);
+    }
+
+    /** Туннель включён, но ждёт: на телефоне работает системный VPN. */
+    public static boolean isPausedByVpn() {
+        return pausedByVpn && isEnabled();
     }
 
     public static String getSelectedId() { return prefs().getString("selected", null); }
@@ -187,7 +210,8 @@ public final class Vless {
     }
 
     private static synchronized void log(String line) {
-        // uuid и прочие длинные секреты в журнал не пускаем
+        // uuid, адреса и прочие секреты в журнал не пускаем
+        line = line.replaceAll("\\b\\d{1,3}(\\.\\d{1,3}){3}\\b", "<ip>");
         line = line.replaceAll("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", "<uuid>");
         LOG.addLast(line);
         while (LOG.size() > 60) LOG.removeFirst();
@@ -293,8 +317,29 @@ public final class Vless {
 
     // ------------------------------------------------------------------ процесс
 
+    /** Настройки для libawg.so: SOCKS5 и .conf; адрес сервера переводим в IP здесь (у Go на Android нет DNS). */
+    private static String awgInput(VlessConfig c, ProxySettings s) throws JSONException {
+        String conf = c.awgConf();
+        String ep = AwgConfig.endpoint(conf);
+        String ip = resolve(AwgConfig.host(ep));
+        JSONObject o = new JSONObject()
+                .put("listen", "127.0.0.1:" + s.getPort())
+                .put("user", s.getUser())
+                .put("pass", s.getPassword())
+                .put("conf", conf);
+        if (ip != null && AwgConfig.port(ep) > 0) {
+            o.put("endpoint", (ip.contains(":") ? "[" + ip + "]" : ip) + ":" + AwgConfig.port(ep));
+        }
+        return o.toString();
+    }
+
     private static Process spawn(String config, String name, Runnable onExit) throws Exception {
-        ProcessBuilder pb = new ProcessBuilder(binary().getAbsolutePath(), "run", "-c", "stdin:");
+        return spawn(false, config, name, onExit);
+    }
+
+    private static Process spawn(boolean awg, String config, String name, Runnable onExit) throws Exception {
+        ProcessBuilder pb = awg ? new ProcessBuilder(binary(AWG_LIB).getAbsolutePath())
+                : new ProcessBuilder(binary(LIB).getAbsolutePath(), "run", "-c", "stdin:");
         pb.redirectErrorStream(true);
         pb.directory(ApplicationLoader.applicationContext.getFilesDir());
         pb.environment().put("XRAY_LOCATION_ASSET", ApplicationLoader.applicationContext.getFilesDir().getAbsolutePath());
@@ -307,7 +352,9 @@ public final class Vless {
                 String line;
                 while ((line = r.readLine()) != null) {
                     log(name + ": " + line);
-                    if (line.contains("Failed") || line.contains("failed to") || line.contains("[Error]")) {
+                    if (line.startsWith("error:")) {
+                        lastError = line.substring(6).trim();
+                    } else if (line.contains("Failed") || line.contains("failed to") || line.contains("[Error]")) {
                         lastError = line.replaceFirst("^.*?(Failed|failed to|\\[Error\\])", "$1");
                     }
                 }
@@ -369,7 +416,8 @@ public final class Vless {
         try (java.io.FileInputStream in = new java.io.FileInputStream("/proc/" + pid + "/cmdline")) {
             byte[] b = new byte[512];
             int n = in.read(b);
-            if (n > 0 && new String(b, 0, n, StandardCharsets.UTF_8).contains(LIB)) {
+            String cmd = n > 0 ? new String(b, 0, n, StandardCharsets.UTF_8) : "";
+            if (cmd.contains(LIB) || cmd.contains(AWG_LIB)) {
                 android.os.Process.killProcess(pid);
             }
         } catch (Throwable ignore) {
@@ -383,8 +431,15 @@ public final class Vless {
         killStale();
         ready = false;
         lastError = null;
-        if (!isAvailable()) {
-            lastError = "libxray.so не найден";
+        if (SystemVpn.isActive()) {
+            pausedByVpn = true;
+            log("на телефоне включён VPN — встроенный туннель не запускаю");
+            AndroidUtilities.runOnUIThread(Vless::pauseProxy);
+            return false;
+        }
+        pausedByVpn = false;
+        if (!canRun(c)) {
+            lastError = (c.isAwg() ? AWG_LIB : LIB) + " не найден";
             return false;
         }
         ProxySettings local = localSettings(false);
@@ -392,12 +447,19 @@ public final class Vless {
             local = localSettings(true);
         }
         try {
-            JSONObject cfg = baseConfig();
-            cfg.put("inbounds", new JSONArray().put(socksInbound("socks", local)));
-            cfg.put("outbounds", new JSONArray().put(prepareOutbound(c, "proxy")));
+            String input;
+            if (c.isAwg()) {
+                input = awgInput(c, local);
+            } else {
+                JSONObject cfg = baseConfig();
+                cfg.put("inbounds", new JSONArray().put(socksInbound("socks", local)));
+                cfg.put("outbounds", new JSONArray().put(prepareOutbound(c, "proxy")));
+                input = cfg.toString();
+            }
+            String tool = c.isAwg() ? "awg" : "xray";
             log("start: " + c.name + " (" + c.summary() + ")");
             Process[] self = new Process[1];
-            Process p = spawn(cfg.toString(), "xray", () -> onMainExit(self[0]));
+            Process p = spawn(c.isAwg(), input, tool, () -> onMainExit(self[0], tool));
             self[0] = p;
             synchronized (Vless.class) {
                 process = p;
@@ -405,7 +467,8 @@ public final class Vless {
             }
             prefs().edit().putInt("pid", pidOf(p)).apply();
             if (!waitPort(local.getPort(), p, 5000)) {
-                if (lastError == null) lastError = alive(p) ? "Xray не открыл порт" : "Xray завершился";
+                String who = c.isAwg() ? "AmneziaWG" : "Xray";
+                if (lastError == null) lastError = alive(p) ? who + " не открыл порт" : who + " завершился";
                 return false;
             }
             ready = true;
@@ -426,7 +489,7 @@ public final class Vless {
         }
     }
 
-    private static void onMainExit(Process p) {
+    private static void onMainExit(Process p, String tool) {
         boolean wanted;
         synchronized (Vless.class) {
             if (process != p) return; // остановлен намеренно или заменён новым
@@ -435,7 +498,7 @@ public final class Vless {
             wanted = isEnabled();
         }
         ready = false;
-        log("xray: процесс завершился");
+        log(tool + ": процесс завершился");
         AndroidUtilities.runOnUIThread(() -> NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxySettingsChanged));
         if (wanted && restarts < 5) {
             restarts++;
@@ -488,7 +551,7 @@ public final class Vless {
         EXEC.execute(() -> {
             boolean ok = startBlocking(c);
             AndroidUtilities.runOnUIThread(() -> {
-                if (!ok) {
+                if (!ok && !pausedByVpn) {
                     prefs().edit().putBoolean("enabled", false).apply();
                     stop();
                 }
@@ -500,6 +563,7 @@ public final class Vless {
     /** Выключить VLESS: остановить Xray и выключить прокси, если Telegram ходил через него. */
     public static void disable() {
         boolean wasActive = isActive();
+        pausedByVpn = false;
         prefs().edit().putBoolean("enabled", false).commit();
         stop();
         if (wasActive) {
@@ -554,12 +618,13 @@ public final class Vless {
 
     /** Пользователь выбрал другой прокси в списке Telegram — VLESS выключается. */
     private static void observe() {
+        SystemVpn.watch();
         if (observing) return;
         observing = true;
         NotificationCenter.getGlobalInstance().addObserver(new NotificationCenter.NotificationCenterDelegate() {
             @Override
             public void didReceivedNotification(int id, int account, Object... args) {
-                if (!isEnabled() || !ready) return;
+                if (!isEnabled() || !ready || pausedByVpn) return;
                 if (!localProxyInUse()) {
                     prefs().edit().putBoolean("enabled", false).apply();
                     stop();
@@ -569,61 +634,110 @@ public final class Vless {
         }, NotificationCenter.proxySettingsChanged);
     }
 
+    /** Системный VPN включили или выключили (из {@link SystemVpn}, UI-поток). */
+    static void onSystemVpnChanged(boolean active) {
+        log(active ? "на телефоне включили VPN — встроенный туннель приостановлен"
+                : "VPN на телефоне выключили");
+        if (isEnabled()) {
+            if (active) {
+                pausedByVpn = true;
+                ready = false;
+                EXEC.execute(Vless::stopBlocking);
+                pauseProxy();
+            } else {
+                pausedByVpn = false;
+                restarts = 0;
+                start();
+            }
+        }
+        NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxySettingsChanged);
+    }
+
+    /** Пока туннель на паузе, Telegram идёт напрямую (через системный VPN), а не в неработающий SOCKS5. */
+    private static void pauseProxy() {
+        if (!localProxyInUse()) return;
+        SharedPreferences.Editor e = MessagesController.getGlobalMainSettings().edit();
+        e.putBoolean("proxy_enabled", false);
+        e.commit();
+        ConnectionsManager.setProxySettings(false, null);
+        NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.proxySettingsChanged);
+    }
+
     // ------------------------------------------------------------------ проверка
 
     /**
-     * Проверяет серверы: временный процесс Xray с отдельным SOCKS5 на каждый сервер,
-     * через каждый — проверка прокси Telegram (пинг до дата-центра). Результат в UI-потоке:
-     * список, отсортированный от быстрого к медленному (ping 0 — не отвечает).
+     * Проверяет серверы: временные процессы с отдельным SOCKS5 на каждый сервер (один Xray на все VLESS,
+     * по процессу libawg.so на каждый AmneziaWG), через каждый — проверка прокси Telegram (пинг до
+     * дата-центра). Результат в UI-потоке: список от быстрого к медленному (ping 0 — не отвечает).
      */
     public static void checkAll(Consumer<ArrayList<VlessConfig>> done) {
         ArrayList<VlessConfig> list = list();
-        if (list.isEmpty() || !isAvailable()) {
+        if (list.isEmpty()) {
             done.accept(list);
             return;
         }
         new Thread(() -> {
-            Process p = null;
-            ArrayList<ProxySettings> socks = new ArrayList<>();
-            try {
-                JSONObject cfg = baseConfig();
-                JSONArray in = new JSONArray(), out = new JSONArray(), rules = new JSONArray();
-                SecureRandom r = new SecureRandom();
-                String user = randomToken(), pass = randomToken();
-                for (int i = 0; i < list.size(); i++) {
-                    int port;
-                    do {
-                        port = 20000 + r.nextInt(40000);
-                    } while (!portFree(port));
-                    ProxySettings s = ProxySettings.builder().setType(ProxySettings.Type.SOCKS5).setAddress("127.0.0.1")
-                            .setPort(port).setUser(user).setPassword(pass).build();
-                    socks.add(s);
-                    in.put(socksInbound("in" + i, s));
-                    out.put(prepareOutbound(list.get(i), "out" + i));
-                    rules.put(new JSONObject().put("type", "field").put("inboundTag", new JSONArray().put("in" + i)).put("outboundTag", "out" + i));
-                }
-                cfg.put("inbounds", in).put("outbounds", out).put("routing", new JSONObject().put("rules", rules));
-                p = spawn(cfg.toString(), "check", null);
-                if (!waitPort(socks.get(socks.size() - 1).getPort(), p, 5000)) {
-                    throw new IllegalStateException(lastError != null ? lastError : "Xray не запустился");
-                }
-            } catch (Throwable e) {
-                FileLog.e(e);
-                if (p != null) p.destroy();
-                AndroidUtilities.runOnUIThread(() -> {
-                    for (VlessConfig c : list) pings.put(c.id, 0L);
-                    done.accept(list());
-                });
-                return;
+            ArrayList<Process> procs = new ArrayList<>();
+            ProxySettings[] socks = new ProxySettings[list.size()];
+            SecureRandom r = new SecureRandom();
+            String user = randomToken(), pass = randomToken();
+            ArrayList<Integer> xray = new ArrayList<>();
+            for (int i = 0; i < list.size(); i++) {
+                int port;
+                do {
+                    port = 20000 + r.nextInt(40000);
+                } while (!portFree(port));
+                socks[i] = ProxySettings.builder().setType(ProxySettings.Type.SOCKS5).setAddress("127.0.0.1")
+                        .setPort(port).setUser(user).setPassword(pass).build();
+                if (!list.get(i).isAwg()) xray.add(i);
             }
-            final Process proc = p;
+            // VLESS и прочее для Xray — одним процессом
+            if (!xray.isEmpty()) {
+                try {
+                    if (!isAvailable()) throw new IllegalStateException(LIB + " не найден");
+                    JSONObject cfg = baseConfig();
+                    JSONArray in = new JSONArray(), out = new JSONArray(), rules = new JSONArray();
+                    for (int i : xray) {
+                        in.put(socksInbound("in" + i, socks[i]));
+                        out.put(prepareOutbound(list.get(i), "out" + i));
+                        rules.put(new JSONObject().put("type", "field").put("inboundTag", new JSONArray().put("in" + i)).put("outboundTag", "out" + i));
+                    }
+                    cfg.put("inbounds", in).put("outbounds", out).put("routing", new JSONObject().put("rules", rules));
+                    Process p = spawn(cfg.toString(), "check", null);
+                    procs.add(p);
+                    if (!waitPort(socks[xray.get(xray.size() - 1)].getPort(), p, 5000)) {
+                        throw new IllegalStateException(lastError != null ? lastError : "Xray не запустился");
+                    }
+                } catch (Throwable e) {
+                    FileLog.e(e);
+                    log("check: " + e.getMessage());
+                    for (int i : xray) socks[i] = null;
+                }
+            }
+            // AmneziaWG — по процессу на сервер
+            Process[] awgProc = new Process[list.size()];
+            for (int i = 0; i < list.size(); i++) {
+                if (!list.get(i).isAwg()) continue;
+                try {
+                    if (!isAwgAvailable()) throw new IllegalStateException(AWG_LIB + " не найден");
+                    awgProc[i] = spawn(true, awgInput(list.get(i), socks[i]), "check-awg", null);
+                    procs.add(awgProc[i]);
+                } catch (Throwable e) {
+                    FileLog.e(e);
+                    log("check-awg: " + e.getMessage());
+                    socks[i] = null;
+                }
+            }
+            for (int i = 0; i < list.size(); i++) {
+                if (awgProc[i] != null && !waitPort(socks[i].getPort(), awgProc[i], 5000)) socks[i] = null;
+            }
             AndroidUtilities.runOnUIThread(() -> {
                 int[] left = {list.size()};
                 boolean[] finished = {false};
                 Runnable finish = () -> {
                     if (finished[0]) return;
                     finished[0] = true;
-                    proc.destroy();
+                    for (Process p : procs) p.destroy();
                     for (VlessConfig c : list) {
                         if (!pings.containsKey(c.id) || pings.get(c.id) < 0) pings.put(c.id, 0L);
                     }
@@ -633,15 +747,20 @@ public final class Vless {
                 };
                 for (int i = 0; i < list.size(); i++) {
                     String id = list.get(i).id;
+                    if (socks[i] == null) {
+                        pings.put(id, 0L);
+                        if (--left[0] <= 0) finish.run();
+                        continue;
+                    }
                     pings.put(id, -1L);
-                    ConnectionsManager.getInstance(UserConfig.selectedAccount).checkProxy(socks.get(i), time -> AndroidUtilities.runOnUIThread(() -> {
+                    ConnectionsManager.getInstance(UserConfig.selectedAccount).checkProxy(socks[i], time -> AndroidUtilities.runOnUIThread(() -> {
                         if (finished[0]) return;
                         pings.put(id, time > 0 ? time : 0L);
                         if (--left[0] <= 0) finish.run();
                     }));
                 }
-                AndroidUtilities.runOnUIThread(finish, 20000);
+                if (!finished[0]) AndroidUtilities.runOnUIThread(finish, 20000);
             });
-        }, "RecGramXrayCheck").start();
+        }, "RecGramTunnelCheck").start();
     }
 }
