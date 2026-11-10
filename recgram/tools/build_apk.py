@@ -46,15 +46,21 @@ def git(*a):
 
 
 def wsl_bash(script, stream=False):
-    """bash -lc в WSL. stream=True — печатать вывод построчно, вернуть код выхода."""
-    cmd = ["wsl", "--", "bash", "-lc", script]
+    """Скрипт bash в WSL. stream=True — печатать вывод построчно, вернуть код выхода.
+
+    Скрипт идёт через stdin: в аргументах командной строки wsl.exe раскрывает $(…) и $var сам,
+    ещё в Windows-каталоге, до запуска bash."""
+    cmd = ["wsl", "--", "bash", "-l", "-s"]
+    # байтами: в текстовом режиме Windows превратит \n в \r\n, и bash споткнётся о \r
+    data = (script.replace("\r", "") + "\n").encode("utf-8")
     if not stream:
-        r = run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
-        return r.returncode, r.stdout + r.stderr
-    p = subprocess.Popen(cmd, cwd=ROOT, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                         stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace")
+        r = subprocess.run(cmd, cwd=ROOT, input=data, capture_output=True)
+        return r.returncode, (r.stdout + r.stderr).decode("utf-8", "replace")
+    p = subprocess.Popen(cmd, cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    p.stdin.write(data)
+    p.stdin.close()
     for line in p.stdout:
-        print("   " + line.rstrip(), flush=True)
+        print("   " + line.decode("utf-8", "replace").rstrip(), flush=True)
     return p.wait(), ""
 
 
