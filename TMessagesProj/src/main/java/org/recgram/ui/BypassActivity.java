@@ -271,8 +271,8 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             // имя сверху, пинг и тип строкой ниже — обе строки на всю ширину
             items.add(UItem.asRadio2(ID_VLESS_BASE + i, c.name, ping + info).setChecked(on));
         }
-        // одна строка: слева «Импортировать настройки» (файл или буфер обмена), справа «Сканировать QR» (выбор — по месту нажатия)
-        items.add(UItem.asButton(ID_VLESS_FILE, s("Импортировать настройки", "Import settings"), s("Сканировать QR", "Scan QR")));
+        // одна строка: слева «Импортировать настройки» (файл или буфер обмена), справа «Сканировать QR»
+        if (getParentActivity() != null) items.add(UItem.asCustom(importRow(getParentActivity())));
         if (!vlessList.isEmpty()) {
             items.add(UItem.asButton(ID_VLESS_CHECK, vlessChecking ? "⏳ " + s("Проверяю серверы…", "Checking servers…")
                     : s("Проверить серверы", "Check servers")).accent());
@@ -290,6 +290,63 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
                         + "VLESS (Reality, xhttp, ws, gRPC…): copy a vless:// link (\"Share\" in v2RayTun/v2rayNG) and tap \"Import settings\" → \"Paste from clipboard\", scan the QR code, or pick a file: an Xray JSON config or shared_preferences.json from v2RayTun.\n"
                         + "AmneziaWG and WireGuard: a .conf file (\"Export\" in AmneziaWG), its text or a vpn:// link from Amnezia — from the clipboard, a file or a QR code.\n"
                         + "Tap a server to turn it on, rename or delete it. Telegram calls do not go through proxies.")));
+    }
+
+    private ImportRow importRow;
+
+    private ImportRow importRow(Context ctx) {
+        if (importRow == null || importRow.getContext() != ctx) {
+            importRow = new ImportRow(ctx);
+            importRow.left.setOnClickListener(v -> onClick(UItem.asButton(ID_VLESS_FILE, ""), v, 0, 0, 0));
+            importRow.right.setOnClickListener(v -> scanQr(ctx));
+        }
+        importRow.left.setText(s("Импортировать настройки", "Import settings"));
+        importRow.right.setText(s("Сканировать QR", "Scan QR"));
+        return importRow;
+    }
+
+    /**
+     * Строка из двух кнопок: слева чёрным, справа цветом значения. В отличие от TextCell не оставляет
+     * справа места под иконку; если при крупном шрифте обе подписи не помещаются, шрифт строки уменьшается.
+     */
+    private static final class ImportRow extends android.widget.FrameLayout {
+        final android.widget.TextView left, right;
+
+        ImportRow(Context ctx) {
+            super(ctx);
+            setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+            left = label(ctx, Theme.key_windowBackgroundWhiteBlackText);
+            right = label(ctx, Theme.key_windowBackgroundWhiteValueText);
+            left.setPadding(AndroidUtilities.dp(21), 0, AndroidUtilities.dp(8), 0);
+            right.setPadding(AndroidUtilities.dp(8), 0, AndroidUtilities.dp(21), 0);
+            addView(left, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, android.view.Gravity.LEFT));
+            addView(right, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, android.view.Gravity.RIGHT));
+        }
+
+        private static android.widget.TextView label(Context ctx, int colorKey) {
+            android.widget.TextView t = new android.widget.TextView(ctx);
+            t.setTextColor(Theme.getColor(colorKey));
+            t.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+            t.setSingleLine(true);
+            t.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            t.setBackground(Theme.getSelectorDrawable(false));
+            return t;
+        }
+
+        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            int width = MeasureSpec.getSize(widthMeasureSpec);
+            // как у TextCell — 16dp; уменьшаем, пока обе подписи не поместятся
+            float size = 16;
+            for (; size > 11; size -= 0.5f) {
+                left.setTextSize(TypedValue.COMPLEX_UNIT_DIP, size);
+                right.setTextSize(TypedValue.COMPLEX_UNIT_DIP, size);
+                float need = left.getPaint().measureText(left.getText().toString()) + right.getPaint().measureText(right.getText().toString())
+                        + AndroidUtilities.dp(21 + 8 + 8 + 21);
+                if (need <= width) break;
+            }
+            super.onMeasure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(50), MeasureSpec.EXACTLY));
+        }
     }
 
     /** Файл с настройками сервера: .conf AmneziaWG, JSON Xray, shared_preferences.json v2RayTun, список ссылок. */
@@ -484,10 +541,6 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
             update();
             return;
         }
-        if (id == ID_VLESS_FILE && view != null && x > view.getWidth() / 2f) {
-            scanQr(ctx);
-            return;
-        }
         if (id == ID_VLESS_FILE) {
             AlertDialog.Builder b = new AlertDialog.Builder(ctx);
             b.setTitle(s("Импортировать настройки", "Import settings"));
@@ -578,8 +631,8 @@ public class BypassActivity extends UniversalFragment implements NotificationCen
                 // прокси нет или он выключен — подбираем режим для прямого подключения по факту связи
                 busy = true;
                 autoProgress = null;
-                autoLog.append(s("Прокси не используется — проверяю прямое подключение к Telegram в 3 режимах, до 40 секунд на режим.\n",
-                        "No proxy in use — checking the direct connection to Telegram in 3 modes, up to 40 seconds per mode.\n"));
+                autoLog.append(s("Прокси не используется — проверяю прямое подключение к Telegram в 3 режимах, до " + Bypass.DIRECT_WAIT_MS / 1000 + " секунд на режим.\n",
+                        "No proxy in use — checking the direct connection to Telegram in 3 modes, up to " + Bypass.DIRECT_WAIT_MS / 1000 + " seconds per mode.\n"));
                 update();
                 Bypass.autoSelectDirect(new Bypass.AutoProgress() {
                     @Override

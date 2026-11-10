@@ -120,7 +120,7 @@ public final class Bypass {
      * переподключается и ждёт связи до DIRECT_WAIT_MS. Оставляет первый режим, в котором связь появилась.
      * Ход — progress.onStep(mode, step, steps, секунд прошло, секунд всего, 0). Результат — [режим, секунд до связи] или null.
      */
-    public static final int DIRECT_WAIT_MS = 40000;
+    public static final int DIRECT_WAIT_MS = 20000;
 
     public static void autoSelectDirect(AutoProgress progress, Consumer<long[]> done) {
         int[] modes = {DPI_OFF, DPI_SPLIT, DPI_DISORDER};
