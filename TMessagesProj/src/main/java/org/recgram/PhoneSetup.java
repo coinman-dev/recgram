@@ -138,7 +138,7 @@ public final class PhoneSetup {
                 Screen.action(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).withPackageUri(),
                 Screen.action(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)));
         if (Build.VERSION.SDK_INT >= 30) {
-            list.add(new Step("unused", s("Не приостанавливать приложение", "Do not pause the app"),
+            list.add(new Step("unused", s("Не приостанавливать", "Do not pause"),
                     s("Выключите «Приостанавливать работу приложения, если оно не используется» (на Samsung — «Удалять разрешения, если не используется»). Иначе через несколько недель без открытия Android остановит RecGram и уведомления.",
                             "Turn off \"Pause app activity if unused\" (Samsung: \"Remove permissions if app is unused\"). Otherwise, after a few weeks without being opened, Android stops RecGram and its notifications."),
                     Check.UNUSED_APP_PAUSE, null,
@@ -173,7 +173,7 @@ public final class PhoneSetup {
                         Screen.component("com.iqoo.powersaving", "com.iqoo.powersaving.UpSlidePowerManagerActivity"),
                         Screen.component("com.iqoo.powersaving", "com.iqoo.powersaving.PowerSavingManagerActivity"),
                         BATTERY_SETTINGS));
-                list.add(new Step("vivo_lock_recents", s("Закрепите RecGram в недавних", "Lock RecGram in recents"),
+                list.add(new Step("vivo_lock_recents", s("Закрепить в недавних", "Lock in recents"),
                         s("На vivo смахнуть приложение из списка недавних — значит полностью его закрыть вместе с фоновым соединением. Никакие настройки выше от этого не защищают.\n\nКнопка откроет рабочий стол. Смахните вверх от нижнего края и задержите палец: появятся недавние приложения. Потяните карточку RecGram вниз и нажмите на замок. Закреплённое приложение не закрывается ни смахиванием, ни «очистить всё».",
                                 "On vivo, swiping the app off the recents screen closes it completely, background connection included — none of the settings above prevent that.\n\nThe button takes you to the home screen. Swipe up from the bottom edge and hold: recent apps appear. Pull the RecGram card down and tap the lock. A locked app is not closed by a swipe or by \"clear all\"."),
                         Check.MANUAL, null, HOME_SCREEN));
