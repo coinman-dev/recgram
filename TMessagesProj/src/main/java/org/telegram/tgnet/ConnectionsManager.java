@@ -295,7 +295,7 @@ public class ConnectionsManager extends BaseController {
         if (preferences.contains("pushConnection")) {
             return preferences.getBoolean("pushConnection", true);
         } else {
-            return MessagesController.getMainSettings(UserConfig.selectedAccount).getBoolean("backgroundConnection", false);
+            return true; // RecGram: push от Firebase нет — фоновое соединение по умолчанию
         }
     }
 

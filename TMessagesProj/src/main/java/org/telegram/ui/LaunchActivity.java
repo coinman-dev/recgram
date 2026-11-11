@@ -7209,6 +7209,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         isResumed = true;
         PipCoordinator.getInstance().onActivityResume(this);
         org.recgram.update.UpdateChecker.checkIfDue(); // RecGram: новые версии на GitHub, раз в сутки
+        org.recgram.BackgroundConnection.checkBatteryPrompt(); // RecGram: уведомления идут по своему соединению
+        ApplicationLoader.startPushService(); // RecGram: пока приложение на экране, служба точно запустится
         if (onResumeStaticCallback != null) {
             onResumeStaticCallback.run();
             onResumeStaticCallback = null;

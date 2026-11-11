@@ -382,13 +382,14 @@ public class ApplicationLoader extends Application {
         if (preferences.contains("pushService")) {
             enabled = preferences.getBoolean("pushService", true);
         } else {
-            enabled = MessagesController.getMainSettings(UserConfig.selectedAccount).getBoolean("keepAliveService", false);
+            enabled = true; // RecGram: push от Firebase нет — фоновое соединение включено по умолчанию
         }
         if (enabled) {
             try {
-                applicationContext.startService(new Intent(applicationContext, NotificationsService.class));
-            } catch (Throwable ignore) {
-
+                // RecGram: служба переднего плана, иначе Android 8+ закрывает её в фоне
+                androidx.core.content.ContextCompat.startForegroundService(applicationContext, new Intent(applicationContext, NotificationsService.class));
+            } catch (Throwable e) {
+                FileLog.e(e); // из фона без исключения из экономии батареи Android 12+ не даёт запустить
             }
         } else {
             applicationContext.stopService(new Intent(applicationContext, NotificationsService.class));
