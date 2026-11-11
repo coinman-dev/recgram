@@ -280,6 +280,11 @@ public final class PhoneSetup {
      */
     public static boolean open(Context ctx, Step st) {
         ArrayList<Screen> all = new ArrayList<>(st.screens);
+        if (st.check == Check.BATTERY && isDone(ctx, Check.BATTERY)) {
+            // Запрос «прекратить оптимизацию» для уже исключённого приложения закрывается сразу, без окна —
+            // выглядит как «не открывается». Показываем список, где RecGram видно и можно вернуть как было.
+            all.remove(0);
+        }
         all.add(APP_DETAILS);
         for (Screen sc : all) {
             try {
