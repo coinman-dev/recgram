@@ -49,7 +49,7 @@ public final class UpdateChecker {
         public String version;   // «1.0.1»
         public String notes;     // текст релиза (может быть пустым)
         public String pageUrl;   // страница релиза
-        public String apkUrl;    // прямая ссылка на RecGram.apk (если есть)
+        public String apkUrl;    // прямая ссылка на APK релиза (RecGram-v1.2.3.apk), если есть
     }
 
     private static SharedPreferences prefs() {
@@ -136,7 +136,7 @@ public final class UpdateChecker {
             if (assets != null) {
                 for (int i = 0; i < assets.length(); i++) {
                     JSONObject a = assets.optJSONObject(i);
-                    if (a != null && "RecGram.apk".equals(a.optString("name"))) {
+                    if (a != null && a.optString("name").matches("RecGram.*\\.apk")) {
                         r.apkUrl = a.optString("browser_download_url", null);
                     }
                 }
