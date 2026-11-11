@@ -47,13 +47,14 @@ public final class BackgroundConnection {
     /** Из LaunchActivity.onResume: если вошли в аккаунт и исключения нет — один раз спросить. */
     public static void checkBatteryPrompt() {
         try {
-            if (askedThisSession || !isEnabled() || isBatteryExempt()) return;
+            if (askedThisSession || !isEnabled()) return;
+            if (isBatteryExempt() && !PhoneSetup.hasVendorSteps()) return;
             if (!UserConfig.getInstance(UserConfig.selectedAccount).isClientActivated()) return;
-            if (prefs().getBoolean("battery_prompt_shown", false)) return;
+            if (prefs().getBoolean("background_setup_prompt_shown", false)) return;
             BaseFragment f = LaunchActivity.getLastFragment();
             if (f == null || f.getParentActivity() == null) return;
             askedThisSession = true;
-            prefs().edit().putBoolean("battery_prompt_shown", true).apply();
+            prefs().edit().putBoolean("background_setup_prompt_shown", true).apply();
             showPrompt(f);
         } catch (Throwable e) {
             FileLog.e(e);
@@ -64,9 +65,14 @@ public final class BackgroundConnection {
         AlertDialog.Builder b = new AlertDialog.Builder(f.getParentActivity());
         b.setTitle(s("Уведомления о сообщениях", "Message notifications"));
         b.setMessage(s(
-                "RecGram получает сообщения по своему фоновому соединению: push-уведомления Telegram приходят только в официальное приложение. Чтобы телефон не отключал это соединение, разрешите RecGram работать без ограничений экономии батареи.\n\nВ шторке будет тихое уведомление «RecGram на связи» — его можно скрыть в настройках уведомлений RecGram (категория «Фоновое соединение»).",
-                "RecGram receives messages over its own background connection: Telegram push notifications only reach the official app. So that the phone does not cut this connection, let RecGram run without battery restrictions.\n\nA silent \"RecGram is connected\" notification stays in the shade; you can hide it in RecGram notification settings (\"Background connection\" category)."));
-        b.setPositiveButton(s("Разрешить", "Allow"), (d, w) -> requestExemption(f.getParentActivity()));
+                "RecGram получает сообщения по своему фоновому соединению: push-уведомления Telegram приходят только в официальное приложение. Чтобы телефон не отключал это соединение, разрешите RecGram работать без ограничений экономии батареи, а на vivo, Xiaomi, HONOR, OPPO и Samsung — ещё и пройдите шаги в фирменных настройках.\n\nВ шторке будет тихое уведомление «RecGram на связи» — его можно скрыть в настройках уведомлений RecGram (категория «Фоновое соединение»).",
+                "RecGram receives messages over its own background connection: Telegram push notifications only reach the official app. So that the phone does not cut this connection, let RecGram run without battery restrictions, and on vivo, Xiaomi, HONOR, OPPO and Samsung also go through the steps in the vendor settings.\n\nA silent \"RecGram is connected\" notification stays in the shade; you can hide it in RecGram notification settings (\"Background connection\" category)."));
+        if (PhoneSetup.hasVendorSteps()) {
+            // vivo, Xiaomi, HONOR, OPPO, Samsung: кроме батареи нужны фирменные переключатели — по шагам
+            b.setPositiveButton(s("Настроить", "Set up"), (d, w) -> f.presentFragment(new org.recgram.ui.BackgroundSetupActivity()));
+        } else {
+            b.setPositiveButton(s("Разрешить", "Allow"), (d, w) -> requestExemption(f.getParentActivity()));
+        }
         b.setNegativeButton(s("Не сейчас", "Not now"), null);
         f.showDialog(b.create());
     }

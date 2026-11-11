@@ -25,6 +25,7 @@ public class RecGramSettingsActivity extends UniversalFragment {
 
     private static final int ID_RECORDING = 1;
     private static final int ID_BYPASS = 2;
+    private static final int ID_BACKGROUND = 3;
     private static final int ID_PRESERVE_DELETED = 3;
     private static final int ID_SECRET_NOTIFY = 11;
     private static final int ID_COPY = 12;
@@ -71,6 +72,10 @@ public class RecGramSettingsActivity extends UniversalFragment {
         items.add(UItem.asHeader(s("Сеть", "Network")));
         items.add(UItem.asButton(ID_BYPASS, R.drawable.msg_policy, s("Обход блокировок", "Bypass blocking"),
                 dpi == org.recgram.bypass.Bypass.DPI_OFF ? s("DPI: выкл", "DPI: off") : s("DPI: вкл", "DPI: on")));
+        int pending = getParentActivity() != null ? org.recgram.PhoneSetup.pendingCount(getParentActivity()) : 0;
+        items.add(UItem.asButton(ID_BACKGROUND, R.drawable.msg_notifications, s("Уведомления в фоне", "Background notifications"),
+                !org.recgram.BackgroundConnection.isEnabled() ? s("выкл", "off")
+                        : pending == 0 ? s("настроено", "set up") : s("шагов: ", "steps: ") + pending));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader(s("История", "History")));
@@ -116,6 +121,9 @@ public class RecGramSettingsActivity extends UniversalFragment {
                 return;
             case ID_BYPASS:
                 presentFragment(new BypassActivity());
+                return;
+            case ID_BACKGROUND:
+                presentFragment(new BackgroundSetupActivity());
                 return;
             case ID_PRESERVE_DELETED:
                 togglePreserveDeleted();
