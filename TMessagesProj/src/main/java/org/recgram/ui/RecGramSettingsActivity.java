@@ -25,7 +25,7 @@ public class RecGramSettingsActivity extends UniversalFragment {
 
     private static final int ID_RECORDING = 1;
     private static final int ID_BYPASS = 2;
-    private static final int ID_BACKGROUND = 3;
+    private static final int ID_BACKGROUND = 4;
     private static final int ID_PRESERVE_DELETED = 3;
     private static final int ID_SECRET_NOTIFY = 11;
     private static final int ID_COPY = 12;
