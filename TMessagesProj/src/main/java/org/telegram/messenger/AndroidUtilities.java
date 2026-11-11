@@ -6732,7 +6732,7 @@ public class AndroidUtilities {
                     }
                     break;
             }
-            return formatString("TelegramVersion", R.string.TelegramVersion, String.format(Locale.US, "v%s %s", org.recgram.RecGramVersion.display(), abi)); // RecGram
+            return org.recgram.RLocale.s("RecGram для Android v", "RecGram for Android v") + org.recgram.RecGramVersion.display() + " " + abi; // RecGram
         } catch (Exception e) {
             FileLog.e(e);
         }
