@@ -668,6 +668,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private int phoneRow;
     private int noteRow;
     private int recgramIdRow = -1; // RecGram: строка «ID»
+    private int recgramRegRow = -1; // RecGram: примерная дата регистрации по ID
     private int locationRow;
     private int userInfoRow;
     private int channelInfoRow;
@@ -10788,6 +10789,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         phoneRow = -1;
         noteRow = -1;
         recgramIdRow = -1;
+        recgramRegRow = -1;
         userInfoRow = -1;
         locationRow = -1;
         channelInfoRow = -1;
@@ -10987,6 +10989,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     usernameRow = rowCount++;
                 }
                 recgramIdRow = rowCount++; // RecGram: ID пользователя
+                if (org.recgram.AccountAge.describe(userId) != null) {
+                    recgramRegRow = rowCount++; // RecGram: регистрация ≈ (оценка по ID)
+                }
                 if (userInfo != null) {
                     if (userInfo.birthday != null) {
                         birthdayRow = rowCount++;
@@ -13578,6 +13583,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         detailCell.setTextAndValue(text, LocaleController.getString(isFragmentPhoneNumber ? R.string.AnonymousNumber : R.string.PhoneMobile), false);
                     } else if (position == recgramIdRow) {
                         detailCell.setTextAndValue(recgramPeerIdText(), "ID", false); // RecGram
+                    } else if (position == recgramRegRow) {
+                        detailCell.setTextAndValue(org.recgram.AccountAge.describe(userId), org.recgram.AccountAge.label(), false); // RecGram
                     } else if (position == noteRow) {
                         final TLRPC.UserFull userInfo = getMessagesController().getUserFull(userId);
                         if (userInfo == null) return;
@@ -14396,7 +14403,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             if (position == infoHeaderRow || position == membersHeaderRow || position == settingsSectionRow2 ||
                     position == numberSectionRow || position == helpHeaderRow || position == debugHeaderRow || position == botPermissionsHeader) {
                 return VIEW_TYPE_HEADER;
-            } else if (position == phoneRow || position == locationRow || position == numberRow || position == birthdayRow || position == recgramIdRow) {
+            } else if (position == phoneRow || position == locationRow || position == numberRow || position == birthdayRow || position == recgramIdRow || position == recgramRegRow) {
                 return VIEW_TYPE_TEXT_DETAIL;
             } else if (position == usernameRow || position == setUsernameRow) {
                 return VIEW_TYPE_TEXT_DETAIL_MULTILINE;
