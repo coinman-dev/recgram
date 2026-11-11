@@ -126,8 +126,12 @@ public final class PhoneSetup {
                 Check.NOTIFICATIONS, null,
                 Screen.action(Settings.ACTION_APP_NOTIFICATION_SETTINGS).packageExtras(Settings.EXTRA_APP_PACKAGE)));
         list.add(new Step("battery", s("Оптимизация батареи", "Battery optimisation"),
-                s("Разрешите RecGram работать без оптимизации батареи. Иначе Android усыпляет приложение, как только гаснет экран, и сообщения перестают приходить.",
-                        "Let RecGram run without battery optimisation. Otherwise Android puts the app to sleep as soon as the screen goes off, and messages stop arriving."),
+                s("Разрешите RecGram работать без оптимизации батареи. Иначе Android усыпляет приложение, как только гаснет экран, и сообщения перестают приходить.
+
+Если уже разрешено, кнопка откроет страницу RecGram: там «Батарея» должна быть «Без ограничений».",
+                        "Let RecGram run without battery optimisation. Otherwise Android puts the app to sleep as soon as the screen goes off, and messages stop arriving.
+
+If already allowed, the button opens the RecGram page: \"Battery\" there should be \"Unrestricted\"."),
                 Check.BATTERY, null,
                 Screen.action(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).withPackageUri(),
                 Screen.action(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)));
@@ -282,8 +286,12 @@ public final class PhoneSetup {
         ArrayList<Screen> all = new ArrayList<>(st.screens);
         if (st.check == Check.BATTERY && isDone(ctx, Check.BATTERY)) {
             // Запрос «прекратить оптимизацию» для уже исключённого приложения закрывается сразу, без окна —
-            // выглядит как «не открывается». Показываем список, где RecGram видно и можно вернуть как было.
-            all.remove(0);
+            // выглядит как «не открывается». Открываем страницу RecGram (там «Батарея: Без ограничений»),
+            // а не общий список всех приложений. Экран батареи одного приложения
+            // (VIEW_ADVANCED_POWER_USAGE_DETAIL) не используем: на Galaxy S21 / One UI 7 он роняет «Настройки».
+            all.clear();
+            all.add(APP_DETAILS);
+            all.add(Screen.action(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
         }
         all.add(APP_DETAILS);
         for (Screen sc : all) {
