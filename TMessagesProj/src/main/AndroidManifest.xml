@@ -89,6 +89,8 @@
 
     <queries>
         <package android:name="com.google.android.apps.maps"/>
+        <!-- RecGram: прочитать автозапуск на vivo (PhoneSetup.readVendor) -->
+        <provider android:authorities="com.vivo.permissionmanager.provider.permission"/>
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="ton"/>

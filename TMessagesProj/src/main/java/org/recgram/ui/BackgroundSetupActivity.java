@@ -53,14 +53,23 @@ public class BackgroundSetupActivity extends UniversalFragment {
                 "Push-уведомления Telegram приходят только в официальное приложение, поэтому RecGram получает сообщения по своему соединению. Чтобы телефон его не обрывал, пройдите шаги ниже. Выключите соединение — и сообщения будут приходить только при открытом RecGram.",
                 "Telegram push notifications only reach the official app, so RecGram receives messages over its own connection. Go through the steps below so that the phone does not cut it. Turn the connection off and messages arrive only while RecGram is open.")));
 
+        android.app.ApplicationExitInfo kill = PhoneSetup.lastSystemKill(ctx);
+        if (kill != null && Build.VERSION.SDK_INT >= 30) {
+            String when = new java.text.SimpleDateFormat("dd.MM HH:mm", java.util.Locale.getDefault()).format(new java.util.Date(kill.getTimestamp()));
+            items.add(UItem.asShadow("⚠️ " + s("Система закрыла RecGram ", "The system closed RecGram on ") + when
+                    + s(" — в это время сообщения могли не приходить. Проверьте шаги ниже; на vivo чаще всего виноваты смахивание из недавних и «Оптимизация во время сна».",
+                    " — messages may not have arrived then. Check the steps below; on vivo the usual causes are swiping it off recents and sleep standby optimisation.")));
+        }
+
         String brand = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER;
         items.add(UItem.asHeader(s("Шаги для этого телефона", "Steps for this phone") + (brand.isEmpty() ? "" : " (" + brand + ")")));
         for (int i = 0; i < steps.size(); i++) {
             PhoneSetup.Step st = steps.get(i);
             boolean done = PhoneSetup.isDone(ctx, st);
-            String mark = done ? "✅ " : st.check == PhoneSetup.Check.MANUAL ? "◻️ " : "⚠️ ";
+            boolean auto = PhoneSetup.isAutomatic(ctx, st);
+            String mark = done ? "✅ " : auto ? "⚠️ " : "◻️ ";
             items.add(UItem.asButton(ID_OPEN_BASE + i, mark + st.title, s("Открыть", "Open")));
-            if (st.check == PhoneSetup.Check.MANUAL) {
+            if (!auto) {
                 items.add(UItem.asCheck(ID_DONE_BASE + i, s("Сделано", "Done")).setChecked(done));
             }
             items.add(UItem.asShadow(st.text));

@@ -38,7 +38,11 @@ public final class PhoneSetup {
     private PhoneSetup() {
     }
 
-    public enum Check { NOTIFICATIONS, BATTERY, UNUSED_APP_PAUSE, MANUAL }
+    /**
+     * VIVO_AUTOSTART, VIVO_SLEEP — фирменные переключатели vivo, которые удалось прочитать (OriginOS 6, X300,
+     * 11.11.2026): если прошивка не даёт их прочитать, шаг остаётся с ручной отметкой «Сделано».
+     */
+    public enum Check { NOTIFICATIONS, BATTERY, UNUSED_APP_PAUSE, VIVO_AUTOSTART, VIVO_SLEEP, MANUAL }
 
     /** Способ открыть экран настроек. */
     static final class Screen {
@@ -152,7 +156,7 @@ public final class PhoneSetup {
                 list.add(new Step("vivo_permissions", s("Автозапуск", "Autostart"),
                         s("На экране RecGram включите «Автозапуск» (если есть — также «Отображать на заблок. экране» и «Всплывающие окна в фоновом режиме»). Без автозапуска vivo не держит приложение в фоне.\n\nЕсли открылся список приложений — найдите в нём RecGram.",
                                 "On the RecGram screen turn on \"Autostart\" (and, if present, \"Display on lock screen\" and \"Background pop-ups\"). Without autostart vivo does not keep the app in the background.\n\nIf a list of apps opens, find RecGram in it."),
-                        Check.MANUAL, null,
+                        Check.VIVO_AUTOSTART, null,
                         Screen.component("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.SoftPermissionDetailActivity").packageExtras("packagename"),
                         Screen.component("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"),
                         Screen.component("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager")));
@@ -165,7 +169,7 @@ public final class PhoneSetup {
                 list.add(new Step("vivo_sleep", s("Оптимизация во время сна", "Sleep standby optimisation"),
                         s("Главная настройка для vivo: именно она выгружает приложение ночью.\n\nОткроется «Управление энергосбережением». Прокрутите в самый низ, до «Стратегии оптимизации системы», и выключите «Оптимизация режима ожидания во время сна».\n\nЧуть выше на том же экране выключите «Отключаться от Интернета через 5 мин после выключения экрана».",
                                 "The key setting on vivo: this is what unloads the app at night.\n\n\"Power saving management\" opens. Scroll to the very bottom, to \"System optimisation strategies\", and turn off \"Sleep standby optimisation\".\n\nA little higher on the same screen, turn off disconnecting from the internet 5 minutes after the screen goes off."),
-                        Check.MANUAL, null,
+                        Check.VIVO_SLEEP, null,
                         Screen.component("com.iqoo.powersaving", "com.iqoo.powersaving.UpSlidePowerManagerActivity"),
                         Screen.component("com.iqoo.powersaving", "com.iqoo.powersaving.PowerSavingManagerActivity"),
                         BATTERY_SETTINGS));
@@ -242,7 +246,77 @@ public final class PhoneSetup {
     public static boolean isDone(Context ctx, Step st) {
         if (st.unneededWhen != null && isDone(ctx, st.unneededWhen)) return true;
         if (st.check == Check.MANUAL) return prefs().getBoolean(st.key, false);
+        if (st.check == Check.VIVO_AUTOSTART || st.check == Check.VIVO_SLEEP) {
+            Boolean v = readVendor(ctx, st.check);
+            return v != null ? v : prefs().getBoolean(st.key, false); // не прочитали — отметка пользователя
+        }
         return isDone(ctx, st.check);
+    }
+
+    /** Шаг проверяется сам (Android или прочитанный переключатель производителя), отметка «Сделано» не нужна. */
+    public static boolean isAutomatic(Context ctx, Step st) {
+        if (st.check == Check.MANUAL) return false;
+        if (st.check == Check.VIVO_AUTOSTART || st.check == Check.VIVO_SLEEP) return readVendor(ctx, st.check) != null;
+        return true;
+    }
+
+    /**
+     * Переключатели vivo; null — прочитать не удалось.
+     * Автозапуск: база com.vivo.permissionmanager, таблица bg_start_up_apps, currentstate 0 — включён.
+     * Сон: Settings.System power_sleep_mode_enabled (оптимизация режима ожидания во время сна) и
+     * Settings.Secure last_power_switch_close_net (отключаться от Интернета через 5 мин) — оба должны быть 0.
+     */
+    static Boolean readVendor(Context ctx, Check c) {
+        try {
+            if (c == Check.VIVO_AUTOSTART) {
+                Uri uri = Uri.parse("content://com.vivo.permissionmanager.provider.permission/bg_start_up_apps");
+                try (android.database.Cursor cur = ctx.getContentResolver().query(uri, new String[]{"currentstate"},
+                        "pkgname=?", new String[]{ctx.getPackageName()}, null)) {
+                    if (cur == null || !cur.moveToFirst()) return null;
+                    return cur.getInt(0) == 0;
+                }
+            }
+            if (c == Check.VIVO_SLEEP) {
+                String sleep = Settings.System.getString(ctx.getContentResolver(), "power_sleep_mode_enabled");
+                String net = Settings.Secure.getString(ctx.getContentResolver(), "last_power_switch_close_net");
+                if (sleep == null && net == null) return null;
+                return !"1".equals(sleep) && !"1".equals(net);
+            }
+        } catch (Throwable e) {
+            FileLog.d("RecGram: настройка vivo не читается: " + e.getClass().getSimpleName());
+        }
+        return null;
+    }
+
+    /**
+     * Последний раз, когда система закрыла RecGram, хотя он должен был работать (не сам, не падение,
+     * не обновление), за трое суток; null — не было или Android старше 11. Так видно, что фирменный
+     * диспетчер питания всё-таки выгружает приложение, какие бы галочки ни стояли.
+     */
+    public static android.app.ApplicationExitInfo lastSystemKill(Context ctx) {
+        if (Build.VERSION.SDK_INT < 30) return null;
+        try {
+            android.app.ActivityManager am = (android.app.ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
+            long since = System.currentTimeMillis() - 3L * 24 * 3600 * 1000;
+            for (android.app.ApplicationExitInfo e : am.getHistoricalProcessExitReasons(ctx.getPackageName(), 0, 20)) {
+                if (e.getTimestamp() < since) break;
+                if (!ctx.getPackageName().equals(e.getProcessName())) continue; // только основной процесс
+                switch (e.getReason()) {
+                    case android.app.ApplicationExitInfo.REASON_OTHER:
+                    case android.app.ApplicationExitInfo.REASON_SIGNALED:
+                    case android.app.ApplicationExitInfo.REASON_LOW_MEMORY:
+                    case android.app.ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE:
+                    case android.app.ApplicationExitInfo.REASON_USER_REQUESTED:
+                    case android.app.ApplicationExitInfo.REASON_USER_STOPPED:
+                        return e;
+                    default:
+                        break;
+                }
+            }
+        } catch (Throwable e) {
+            FileLog.e(e);
+        }
+        return null;
     }
 
     static boolean isDone(Context ctx, Check c) {
