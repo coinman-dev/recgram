@@ -128,8 +128,8 @@ public final class PhoneSetup {
                 Check.NOTIFICATIONS, null,
                 Screen.action(Settings.ACTION_APP_NOTIFICATION_SETTINGS).packageExtras(Settings.EXTRA_APP_PACKAGE)));
         list.add(new Step("battery", s("Оптимизация батареи", "Battery optimisation"),
-                s("Разрешите RecGram работать без оптимизации батареи. Иначе Android усыпляет приложение, как только гаснет экран, и сообщения перестают приходить.\n\nЕсли уже разрешено, кнопка откроет страницу RecGram: там «Батарея» должна быть «Без ограничений».",
-                        "Let RecGram run without battery optimisation. Otherwise Android puts the app to sleep as soon as the screen goes off, and messages stop arriving.\n\nIf already allowed, the button opens the RecGram page: \"Battery\" there should be \"Unrestricted\"."),
+                s("Разрешите RecGram работать без оптимизации батареи. Иначе Android усыпляет приложение, как только гаснет экран, и сообщения перестают приходить.\n\nЕсли уже разрешено, кнопка откроет страницу RecGram, прокрученную к пункту «Батарея»: нажмите его и проверьте, что выбрано «Без ограничений» (на Samsung — «Не ограничено»).",
+                        "Let RecGram run without battery optimisation. Otherwise Android puts the app to sleep as soon as the screen goes off, and messages stop arriving.\n\nIf already allowed, the button opens the RecGram page scrolled to \"Battery\": tap it and check that \"Unrestricted\" is selected."),
                 Check.BATTERY, null,
                 Screen.action(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).withPackageUri(),
                 Screen.action(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)));
@@ -300,9 +300,6 @@ public final class PhoneSetup {
         for (Screen sc : all) {
             try {
                 ctx.startActivity(build(ctx, sc));
-                if (sc.highlightKey != null) {
-                    android.widget.Toast.makeText(ctx, s("Нажмите «Батарея» → «Не ограничено»", "Tap \"Battery\" → \"Unrestricted\""), android.widget.Toast.LENGTH_LONG).show();
-                }
                 return true;
             } catch (Throwable e) {
                 FileLog.d("RecGram: экран " + (sc.cls != null ? sc.cls : sc.action) + " не открылся: " + e.getClass().getSimpleName());
