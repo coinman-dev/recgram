@@ -126,12 +126,8 @@ public final class PhoneSetup {
                 Check.NOTIFICATIONS, null,
                 Screen.action(Settings.ACTION_APP_NOTIFICATION_SETTINGS).packageExtras(Settings.EXTRA_APP_PACKAGE)));
         list.add(new Step("battery", s("Оптимизация батареи", "Battery optimisation"),
-                s("Разрешите RecGram работать без оптимизации батареи. Иначе Android усыпляет приложение, как только гаснет экран, и сообщения перестают приходить.
-
-Если уже разрешено, кнопка откроет страницу RecGram: там «Батарея» должна быть «Без ограничений».",
-                        "Let RecGram run without battery optimisation. Otherwise Android puts the app to sleep as soon as the screen goes off, and messages stop arriving.
-
-If already allowed, the button opens the RecGram page: \"Battery\" there should be \"Unrestricted\"."),
+                s("Разрешите RecGram работать без оптимизации батареи. Иначе Android усыпляет приложение, как только гаснет экран, и сообщения перестают приходить.\n\nЕсли уже разрешено, кнопка откроет страницу RecGram: там «Батарея» должна быть «Без ограничений».",
+                        "Let RecGram run without battery optimisation. Otherwise Android puts the app to sleep as soon as the screen goes off, and messages stop arriving.\n\nIf already allowed, the button opens the RecGram page: \"Battery\" there should be \"Unrestricted\"."),
                 Check.BATTERY, null,
                 Screen.action(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).withPackageUri(),
                 Screen.action(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)));
