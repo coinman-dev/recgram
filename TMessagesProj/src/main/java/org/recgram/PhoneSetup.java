@@ -47,6 +47,8 @@ public final class PhoneSetup {
         boolean packageUri;
         String[] packageExtras = {};
         String intKey;
+        /** Ключ пункта, к которому «Настройки» прокрутят страницу и подсветят его. */
+        String highlightKey;
         int intValue;
         String category;
 
@@ -285,14 +287,22 @@ public final class PhoneSetup {
             // выглядит как «не открывается». Открываем страницу RecGram (там «Батарея: Без ограничений»),
             // а не общий список всех приложений. Экран батареи одного приложения
             // (VIEW_ADVANCED_POWER_USAGE_DETAIL) не используем: на Galaxy S21 / One UI 7 он роняет «Настройки».
+            // Нужный экран («Не ограничено / Оптимизировано / Ограничено», PowerBackgroundUsageDetail) открывается
+            // только изнутри «Настроек»; ближе всего — страница RecGram, прокрученная к пункту «Батарея»
+            // (:settings:fragment_args_key — проверено на Galaxy S21, One UI 7).
             all.clear();
-            all.add(APP_DETAILS);
+            Screen details = Screen.action(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).withPackageUri();
+            details.highlightKey = "battery";
+            all.add(details);
             all.add(Screen.action(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
         }
         all.add(APP_DETAILS);
         for (Screen sc : all) {
             try {
                 ctx.startActivity(build(ctx, sc));
+                if (sc.highlightKey != null) {
+                    android.widget.Toast.makeText(ctx, s("Нажмите «Батарея» → «Не ограничено»", "Tap \"Battery\" → \"Unrestricted\""), android.widget.Toast.LENGTH_LONG).show();
+                }
                 return true;
             } catch (Throwable e) {
                 FileLog.d("RecGram: экран " + (sc.cls != null ? sc.cls : sc.action) + " не открылся: " + e.getClass().getSimpleName());
@@ -308,6 +318,7 @@ public final class PhoneSetup {
         if (sc.packageUri) i.setData(Uri.fromParts("package", ctx.getPackageName(), null));
         for (String k : sc.packageExtras) i.putExtra(k, ctx.getPackageName());
         if (sc.intKey != null) i.putExtra(sc.intKey, sc.intValue);
+        if (sc.highlightKey != null) i.putExtra(":settings:fragment_args_key", sc.highlightKey); // прокрутить к пункту
         if (sc.category != null) i.addCategory(sc.category);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         return i;
