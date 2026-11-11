@@ -49,6 +49,14 @@ public class SplitRow extends FrameLayout {
         int width = MeasureSpec.getSize(widthMeasureSpec);
         int height = AndroidUtilities.dp(50);
         int pad = AndroidUtilities.dp(21), gap = AndroidUtilities.dp(12);
+        // не влезает название — уменьшаем шрифт строки (не меньше 13dp), потом уже многоточие
+        for (float size = 16; size >= 13; size -= 0.5f) {
+            left.setTextSize(TypedValue.COMPLEX_UNIT_DIP, size);
+            right.setTextSize(TypedValue.COMPLEX_UNIT_DIP, size);
+            float need = left.getPaint().measureText(String.valueOf(left.getText()))
+                    + right.getPaint().measureText(String.valueOf(right.getText())) + pad * 2 + gap;
+            if (need <= width) break;
+        }
         right.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY));
         int leftMax = Math.max(0, width - pad * 2 - gap - right.getMeasuredWidth());
         left.measure(MeasureSpec.makeMeasureSpec(leftMax, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY));
