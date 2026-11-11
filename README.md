@@ -26,7 +26,7 @@ trademark of its owners.
 
 | File | Usage |
 |---|---|
-| `RecGram-vX.Y.Z.apk` on the [Releases](https://github.com/coinman-dev/recgram/releases) page | Open it on the phone and allow installing from that source. Updates install over the old version: every release is signed with the same key. |
+| `RecGram.apk` on the [Releases](https://github.com/coinman-dev/recgram/releases) page | Open it on the phone and allow installing from that source. Updates install over the old version: every release is signed with the same key. |
 
 Android 6.0 or newer, ARM processor (arm64-v8a or armeabi-v7a — nearly every
 phone). Installs next to the official Telegram: its own package `app.recgram`
@@ -215,7 +215,7 @@ commit `7be672ead` (Telegram 13.2.1). PNG icons for Android 6–7 are drawn by
 Pushing a tag such as `v1.0.0` or `v1.0.0-beta.1` starts the
 [release workflow](.github/workflows/release.yml). GitHub builds a signed APK
 for arm64-v8a and armeabi-v7a (with Xray-core and AmneziaWG built from source), checks that it is signed with the RecGram
-certificate, and publishes `RecGram-<tag>.apk`, `RecGram.apk` and
+certificate, and publishes `RecGram.apk` and
 `SHA256SUMS.txt`. A tag with a suffix is marked as a prerelease. Run by hand,
 the workflow builds the APK as an artifact kept for three days and publishes
 nothing.

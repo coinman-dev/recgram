@@ -116,18 +116,18 @@ jobs:
           SHA=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$APK" | sed -n 's/.*certificate SHA-256 digest: //p' | head -1 | tr 'a-f' 'A-F' | sed 's/../&:/g; s/:$//')
           echo "SHA-256: $SHA"
           [ "$SHA" = "$EXPECTED" ] || { echo "::error::APK подписан не ключом RecGram"; exit 1; }
-          NAME="RecGram-${GITHUB_REF_NAME//\//-}.apk"
-          cp "$APK" "$NAME"
-          cp "$APK" RecGram.apk  # постоянное имя: ссылка releases/latest/download/RecGram.apk в README
-          sha256sum "$NAME" RecGram.apk > SHA256SUMS.txt
-          echo "APK_NAME=$NAME" >> "$GITHUB_ENV"
+          # один файл с постоянным именем: на него ведёт ссылка releases/latest/download/RecGram.apk
+          # в README и проверка обновлений в приложении; версия видна в названии релиза
+          cp "$APK" RecGram.apk
+          sha256sum RecGram.apk > SHA256SUMS.txt
+          echo "ARTIFACT_NAME=RecGram-${GITHUB_REF_NAME//\//-}" >> "$GITHUB_ENV"
 
       - name: Артефакт (ручной запуск)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ env.APK_NAME }}
-          path: ${{ env.APK_NAME }}
+          name: ${{ env.ARTIFACT_NAME }}
+          path: RecGram.apk
           retention-days: 3
 
       - name: Релиз
@@ -137,4 +137,4 @@ jobs:
         run: |
           PRE=""
           case "$GITHUB_REF_NAME" in *-*) PRE="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" "$APK_NAME" RecGram.apk SHA256SUMS.txt $PRE --title "RecGram $GITHUB_REF_NAME" --generate-notes
+          gh release create "$GITHUB_REF_NAME" RecGram.apk SHA256SUMS.txt $PRE --title "RecGram $GITHUB_REF_NAME" --generate-notes
