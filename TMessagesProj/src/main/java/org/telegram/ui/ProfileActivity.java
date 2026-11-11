@@ -667,6 +667,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private int infoEndRowEmpty;
     private int phoneRow;
     private int noteRow;
+    private int recgramIdRow = -1; // RecGram: строка «ID»
     private int locationRow;
     private int userInfoRow;
     private int channelInfoRow;
@@ -4628,6 +4629,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 }
             } else if (position == noteRow) {
                 editNotes(view, position);
+            } else if (position == recgramIdRow) {
+                AndroidUtilities.addToClipboard(recgramPeerIdText()); // RecGram
+                BulletinFactory.of(this).createCopyBulletin(org.recgram.RLocale.s("ID скопирован", "ID copied")).show();
             } else {
                 processOnClickOrPress(position, view, x, y);
             }
@@ -10691,6 +10695,19 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
     }
 
+    /**
+     * RecGram: ID для показа. Пользователь — как есть; канал и супергруппа — «-100…», обычная группа — «-…»
+     * (формат Bot API, его ждут боты и сервисы).
+     */
+    private String recgramPeerIdText() {
+        if (userId != 0) return String.valueOf(userId);
+        if (chatId != 0) {
+            TLRPC.Chat chat = getMessagesController().getChat(chatId);
+            return ChatObject.isChannel(chat) ? "-100" + chatId : "-" + chatId;
+        }
+        return "";
+    }
+
     public boolean isChat() {
         return chatId != 0;
     }
@@ -10770,6 +10787,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         infoEndRowEmpty = -1;
         phoneRow = -1;
         noteRow = -1;
+        recgramIdRow = -1;
         userInfoRow = -1;
         locationRow = -1;
         channelInfoRow = -1;
@@ -10968,6 +10986,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 if (user != null && username != null) {
                     usernameRow = rowCount++;
                 }
+                recgramIdRow = rowCount++; // RecGram: ID пользователя
                 if (userInfo != null) {
                     if (userInfo.birthday != null) {
                         birthdayRow = rowCount++;
@@ -11103,7 +11122,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 sharedMediaRow = rowCount++;
             }
         } else if (chatId != 0) {
-            if (chatInfo != null && (!TextUtils.isEmpty(chatInfo.about) || chatInfo.location instanceof TLRPC.TL_channelLocation) || ChatObject.isPublic(currentChat)) {
+            if (true /* RecGram: блок с ID есть всегда */ || chatInfo != null && (!TextUtils.isEmpty(chatInfo.about) || chatInfo.location instanceof TLRPC.TL_channelLocation) || ChatObject.isPublic(currentChat)) {
                 if (emptyRow < 0 && emptyRow2 < 0) {
                     if (hasMusic || hasBalance || peerColor != null || actionsView == null) {
                         emptyRow2 = rowCount++;
@@ -11126,6 +11145,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 if (ChatObject.isPublic(currentChat)) {
                     usernameRow = rowCount++;
                 }
+                recgramIdRow = rowCount++; // RecGram: ID группы/канала
             }
             if (emptyRow < 0 && emptyRow2 < 0) {
                 if (hasMusic || hasBalance || peerColor != null || actionsView == null) {
@@ -13556,6 +13576,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         }
                         isFragmentPhoneNumber = phoneNumber != null && phoneNumber.matches("888\\d{8}");
                         detailCell.setTextAndValue(text, LocaleController.getString(isFragmentPhoneNumber ? R.string.AnonymousNumber : R.string.PhoneMobile), false);
+                    } else if (position == recgramIdRow) {
+                        detailCell.setTextAndValue(recgramPeerIdText(), "ID", false); // RecGram
                     } else if (position == noteRow) {
                         final TLRPC.UserFull userInfo = getMessagesController().getUserFull(userId);
                         if (userInfo == null) return;
@@ -14346,7 +14368,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         position == clearLogsRow || position == switchBackendRow || position == setAvatarRow ||
                         position == addToGroupButtonRow || position == premiumRow || position == premiumGiftingRow ||
                         position == businessRow || position == liteModeRow || position == birthdayRow || position == channelRow ||
-                        position == starsRow || position == tonRow || position == linkedCommunityRow;
+                        position == starsRow || position == tonRow || position == linkedCommunityRow || position == recgramIdRow;
             }
             if (holder.itemView instanceof UserCell) {
                 UserCell userCell = (UserCell) holder.itemView;
@@ -14374,7 +14396,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             if (position == infoHeaderRow || position == membersHeaderRow || position == settingsSectionRow2 ||
                     position == numberSectionRow || position == helpHeaderRow || position == debugHeaderRow || position == botPermissionsHeader) {
                 return VIEW_TYPE_HEADER;
-            } else if (position == phoneRow || position == locationRow || position == numberRow || position == birthdayRow) {
+            } else if (position == phoneRow || position == locationRow || position == numberRow || position == birthdayRow || position == recgramIdRow) {
                 return VIEW_TYPE_TEXT_DETAIL;
             } else if (position == usernameRow || position == setUsernameRow) {
                 return VIEW_TYPE_TEXT_DETAIL_MULTILINE;
