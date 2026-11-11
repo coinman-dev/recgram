@@ -33,9 +33,9 @@ jobs:
           OURS=$(gh api "repos/$GITHUB_REPOSITORY/contents/gradle.properties?ref=${GITHUB_REF_NAME}" --jq .content \
             | base64 -d | sed -n 's/^APP_VERSION_NAME=//p' | tr -d '\r')
           # последний коммит вида «update to 13.2.1 (7291)» среди 50 свежих в master
+          # первый подходящий выбирает сам jq: «| head -1» при pipefail обрывал gh (SIGPIPE, код 141)
           LINE=$(gh api "repos/$UPSTREAM/commits?sha=master&per_page=50" \
-            --jq '.[] | select(.commit.message | test("^update to [0-9]+[.][0-9]+([.][0-9]+)? [(][0-9]+[)]")) | .sha + " " + (.commit.message | split("\n")[0])' \
-            | head -1)
+            --jq '[.[] | select(.commit.message | test("^update to [0-9]+[.][0-9]+([.][0-9]+)? [(][0-9]+[)]")) | .sha + " " + (.commit.message | split("\n")[0])] | .[0] // ""')
           if [ -z "$LINE" ]; then
             echo "::warning::В $UPSTREAM не найден коммит «update to …» среди 50 последних"
             exit 0
@@ -55,7 +55,7 @@ jobs:
             exit 0
           fi
           TITLE="Вышел Telegram $THEIRS — обновить RecGram"
-          if gh issue list --repo "$GITHUB_REPOSITORY" --state all --search "\"Telegram $THEIRS\" in:title" --json title --jq '.[].title' | grep -qxF "$TITLE"; then
+          if gh issue list --repo "$GITHUB_REPOSITORY" --state all --search "\"Telegram $THEIRS\" in:title" --json title --jq '.[].title' | grep -xF "$TITLE" > /dev/null; then
             echo "Issue «$TITLE» уже есть."
             exit 0
           fi
