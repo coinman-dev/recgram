@@ -97,10 +97,11 @@ public final class UpdateChecker {
                 FileLog.d("RecGram: проверка обновлений не удалась: " + e);
             }
             if (ok) prefs().edit().putLong("last_check", System.currentTimeMillis()).apply();
+            final boolean reached = ok;
             final Release r = found != null && isNewer(found.version, RecGramVersion.own()) ? found : null;
             AndroidUtilities.runOnUIThread(() -> {
                 running = false;
-                lastError = !ok;
+                lastError = !reached;
                 done.accept(r);
             });
         }, "RecGramUpdate").start();
