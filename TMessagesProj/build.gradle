@@ -141,6 +141,7 @@ android {
     }
 
     defaultConfig {
+        buildConfigField "String", "RECGRAM_VERSION", "\"" + RECGRAM_VERSION + "\"" // RecGram: своя версия для показа
         minSdkVersion 23
         targetSdkVersion 36
 

@@ -220,6 +220,11 @@ certificate, and publishes `RecGram-<tag>.apk`, `RecGram.apk` and
 the workflow builds the APK as an artifact kept for three days and publishes
 nothing.
 
+The RecGram version is set in `gradle.properties` (`RECGRAM_VERSION`); the tag
+must match it or the build stops. The app shows it together with the Telegram
+version it is based on: "1.0.0 (13.2.1)". Telegram servers only receive the
+Telegram version (`APP_VERSION_NAME`).
+
 ## License
 
 RecGram is a fork of Telegram for Android (Nikolai Kudashov and the Telegram

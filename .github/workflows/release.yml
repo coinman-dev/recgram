@@ -30,6 +30,18 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
+      # Тег v1.2.3 (или v1.2.3-beta.1) должен совпадать с RECGRAM_VERSION — её показывает приложение
+      - name: Версия
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VER=$(sed -n 's/^RECGRAM_VERSION=//p' gradle.properties | tr -d '\r')
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "${TAG%%-*}" != "$VER" ]; then
+            echo "::error::Тег $GITHUB_REF_NAME не совпадает с RECGRAM_VERSION=$VER в gradle.properties"
+            exit 1
+          fi
+          echo "RecGram $VER"
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

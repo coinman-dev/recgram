@@ -1060,7 +1060,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                     }
                     break;
             }
-            return formatString(R.string.TelegramVersion, String.format(Locale.US, "v%s (%d)\n%s", pInfo.versionName, code, abi));
+            return formatString(R.string.TelegramVersion, String.format(Locale.US, "v%s\n%s", org.recgram.RecGramVersion.display(), abi)); // RecGram: «v1.0.0 (13.2.1)»
         } catch (Exception e) {
             FileLog.e(e);
         }

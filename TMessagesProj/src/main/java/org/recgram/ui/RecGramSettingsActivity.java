@@ -97,7 +97,7 @@ public class RecGramSettingsActivity extends UniversalFragment {
         items.add(UItem.asShadow(s("Свой ключ можно получить на my.telegram.org.", "You can get your own key at my.telegram.org.")));
 
         items.add(UItem.asHeader(s("О приложении", "About")));
-        items.add(UItem.asButton(ID_VERSION, R.drawable.msg_info, "RecGram", BuildVars.BUILD_VERSION_STRING));
+        items.add(UItem.asButton(ID_VERSION, R.drawable.msg_info, "RecGram", org.recgram.RecGramVersion.display()));
         items.add(UItem.asShadow(s(
                 "RecGram — неофициальный клиент Telegram с открытым исходным кодом (GPLv2). Он не связан с Telegram FZ-LLC.",
                 "RecGram is an unofficial open-source Telegram client (GPLv2). It is not affiliated with Telegram FZ-LLC.")));

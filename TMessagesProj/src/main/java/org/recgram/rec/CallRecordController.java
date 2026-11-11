@@ -262,7 +262,7 @@ public final class CallRecordController {
             String title = (out ? s("Звонок: ", "Call to ") : s("Звонок от ", "Call from ")) + name;
             boolean tagged = false;
             if (!r.isFailed() && r.getFile().getName().endsWith(".opus")) {
-                tagged = OggOpusTags.write(r.getFile(), "RecGram " + BuildVars.BUILD_VERSION_STRING,
+                tagged = OggOpusTags.write(r.getFile(), "RecGram " + org.recgram.RecGramVersion.display(),
                         buildTags(r, started, id, fromN, toN, phone, out, notified));
             }
             String published = r.isFailed() ? null : RecordingStore.publish(r.getFile(), title);
@@ -342,7 +342,7 @@ public final class CallRecordController {
             o.put("failed", r.isFailed());
             o.put("sha256", f.exists() ? sha256(f) : "");
             o.put("saved_to", published != null ? published : f.getAbsolutePath());
-            o.put("app", "RecGram " + BuildVars.BUILD_VERSION_STRING);
+            o.put("app", "RecGram " + org.recgram.RecGramVersion.display());
             String n = f.getName();
             File meta = new File(f.getParentFile(), n.substring(0, n.lastIndexOf('.')) + ".json");
             try (FileOutputStream os = new FileOutputStream(meta)) {
