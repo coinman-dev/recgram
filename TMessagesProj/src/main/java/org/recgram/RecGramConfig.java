@@ -99,8 +99,6 @@ public final class RecGramConfig {
     public static boolean isAllowCopySave() { return isAllowProtected(); }
     public static boolean isAllowResendProtected() { return b("allow_resend_protected", false); }
     public static void setAllowResendProtected(boolean v) { put("allow_resend_protected", v); }
-    public static boolean isAllowStoriesDownload() { return b("allow_stories_download", false); }
-    public static void setAllowStoriesDownload(boolean v) { put("allow_stories_download", v); }
     /** Работает только со своим API-ключом: п. 1.4 правил Telegram API. */
     public static boolean isAllowSelfDestructSave() { return b("allow_self_destruct_save", false) && ApiKeys.isCustom(); }
     public static void setAllowSelfDestructSave(boolean v) { put("allow_self_destruct_save", v); }
