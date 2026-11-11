@@ -26,7 +26,6 @@ public class RecGramSettingsActivity extends UniversalFragment {
     private static final int ID_RECORDING = 1;
     private static final int ID_BYPASS = 2;
     private static final int ID_PRESERVE_DELETED = 3;
-    private static final int ID_SCREENSHOTS = 10;
     private static final int ID_SECRET_NOTIFY = 11;
     private static final int ID_COPY = 12;
     private static final int ID_RESEND = 14;
@@ -81,17 +80,16 @@ public class RecGramSettingsActivity extends UniversalFragment {
 
         boolean custom = ApiKeys.isCustom();
         items.add(UItem.asHeader(s("Защищённый контент", "Protected content")));
-        items.add(UItem.asCheck(ID_SCREENSHOTS, s("Разрешить скриншоты", "Allow screenshots")).setChecked(RecGramConfig.isAllowScreenshots()));
+        items.add(UItem.asCheck(ID_COPY, s("Скриншоты, копирование и сохранение", "Screenshots, copying and saving")).setChecked(RecGramConfig.isAllowProtected()));
         items.add(UItem.asCheck(ID_SECRET_NOTIFY, s("Сообщать о скриншоте", "Report screenshots")).setChecked(RecGramConfig.isSecretScreenshotNotify()));
-        items.add(UItem.asCheck(ID_COPY, s("Копировать и сохранять", "Copy and save")).setChecked(RecGramConfig.isAllowCopySave()));
         items.add(UItem.asCheck(ID_RESEND, s("Переотправлять", "Resend")).setChecked(RecGramConfig.isAllowResendProtected()));
         items.add(UItem.asCheck(ID_STORIES, s("Скачивать истории", "Download stories")).setChecked(RecGramConfig.isAllowStoriesDownload()));
         items.add(UItem.asCheck(ID_SELF_DESTRUCT, s("Сохранять исчезающие медиа", "Save disappearing media")).setChecked(RecGramConfig.isAllowSelfDestructSave()).setEnabled(custom));
         items.add(UItem.asShadow(s(
-                "Действует в каналах и чатах с запретом копирования и в секретных чатах. Скриншоты включают и запись экрана. «Сообщать о скриншоте» — собеседник в секретном чате узнает, что вы сделали скриншот. «Копировать и сохранять» — копирование текста и сохранение фото, видео и файлов. «Переотправлять» — сообщение уходит как новое, без пометки «Переслано».\n"
+                "Действует в каналах и чатах с запретом копирования и в секретных чатах. «Скриншоты, копирование и сохранение» — скриншоты и запись экрана, копирование текста, сохранение фото, видео и файлов. «Сообщать о скриншоте» — собеседник в секретном чате узнает, что вы сделали скриншот. «Переотправлять» — сообщение уходит как новое, без пометки «Переслано».\n"
                         + "Всё выключено по умолчанию. За использование чужого и платного контента отвечаете вы."
                         + (custom ? "" : "\nИсчезающие медиа доступны только со своим API-ключом."),
-                "Applies to channels and chats that forbid copying and to secret chats. Screenshots include screen recording. \"Report screenshots\" lets the other party in a secret chat know you took a screenshot. \"Copy and save\" allows copying text and saving photos, videos and files. \"Resend\" sends the message as a new one, without the \"Forwarded\" label.\n"
+                "Applies to channels and chats that forbid copying and to secret chats. \"Screenshots, copying and saving\" allows screenshots and screen recording, copying text and saving photos, videos and files. \"Report screenshots\" lets the other party in a secret chat know you took a screenshot. \"Resend\" sends the message as a new one, without the \"Forwarded\" label.\n"
                         + "Everything is off by default. You are responsible for how you use other people's and paid content."
                         + (custom ? "" : "\nSelf-destructing media is available only with your own API key."))));
 
@@ -119,14 +117,11 @@ public class RecGramSettingsActivity extends UniversalFragment {
             case ID_PRESERVE_DELETED:
                 togglePreserveDeleted();
                 return;
-            case ID_SCREENSHOTS:
-                toggleProtected(() -> RecGramConfig.setAllowScreenshots(!RecGramConfig.isAllowScreenshots()), !RecGramConfig.isAllowScreenshots());
-                return;
             case ID_SECRET_NOTIFY:
                 RecGramConfig.setSecretScreenshotNotify(!RecGramConfig.isSecretScreenshotNotify());
                 break;
             case ID_COPY:
-                toggleProtected(() -> RecGramConfig.setAllowCopySave(!RecGramConfig.isAllowCopySave()), !RecGramConfig.isAllowCopySave());
+                toggleProtected(() -> RecGramConfig.setAllowProtected(!RecGramConfig.isAllowProtected()), !RecGramConfig.isAllowProtected());
                 return;
             case ID_RESEND:
                 toggleProtected(() -> RecGramConfig.setAllowResendProtected(!RecGramConfig.isAllowResendProtected()), !RecGramConfig.isAllowResendProtected());

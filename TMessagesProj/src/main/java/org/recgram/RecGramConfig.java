@@ -83,13 +83,20 @@ public final class RecGramConfig {
     public static void setHasPreservedDeleted() { put("has_preserved_deleted", true); }
 
     // Защищённый контент
-    public static boolean isAllowScreenshots() { return b("allow_screenshots", false); }
-    public static void setAllowScreenshots(boolean v) { put("allow_screenshots", v); }
+    /**
+     * Скриншоты, копирование и сохранение — одна настройка: копирование снимает с чата отметку
+     * «запрет копирования», а по ней Telegram запрещает и скриншоты, так что раздельно они не работали.
+     * Раньше было два ключа; включён любой из них — настройка включена.
+     */
+    public static boolean isAllowProtected() { return b("allow_screenshots", false) || b("allow_copy_save", false); }
+    public static void setAllowProtected(boolean v) {
+        prefs().edit().putBoolean("allow_screenshots", v).putBoolean("allow_copy_save", v).apply();
+    }
+    public static boolean isAllowScreenshots() { return isAllowProtected(); }
     public static boolean isSecretScreenshotNotify() { return b("secret_screenshot_notify", true); }
     public static void setSecretScreenshotNotify(boolean v) { put("secret_screenshot_notify", v); }
-    /** Копирование текста и сохранение медиа из защищённых чатов. */
-    public static boolean isAllowCopySave() { return b("allow_copy_save", false); }
-    public static void setAllowCopySave(boolean v) { put("allow_copy_save", v); }
+    /** Копирование текста и сохранение медиа из защищённых чатов (та же настройка, что и скриншоты). */
+    public static boolean isAllowCopySave() { return isAllowProtected(); }
     public static boolean isAllowResendProtected() { return b("allow_resend_protected", false); }
     public static void setAllowResendProtected(boolean v) { put("allow_resend_protected", v); }
     public static boolean isAllowStoriesDownload() { return b("allow_stories_download", false); }
