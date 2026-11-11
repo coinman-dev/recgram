@@ -7208,6 +7208,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         WidgetMedia.onAppPaused(false);
         isResumed = true;
         PipCoordinator.getInstance().onActivityResume(this);
+        org.recgram.update.UpdateChecker.checkIfDue(); // RecGram: новые версии на GitHub, раз в сутки
         if (onResumeStaticCallback != null) {
             onResumeStaticCallback.run();
             onResumeStaticCallback = null;

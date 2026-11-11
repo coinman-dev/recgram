@@ -31,7 +31,9 @@ public class RecGramSettingsActivity extends UniversalFragment {
     private static final int ID_RESEND = 14;
     private static final int ID_SELF_DESTRUCT = 16;
     private static final int ID_API = 20;
-    private static final int ID_VERSION = 30;
+    private static final int ID_VERSION = 30, ID_UPDATES_AUTO = 31, ID_UPDATES_CHECK = 32;
+    private String updateStatus;
+    private boolean updateChecking;
 
     @Override
     protected CharSequence getTitle() {
@@ -98,6 +100,9 @@ public class RecGramSettingsActivity extends UniversalFragment {
 
         items.add(UItem.asHeader(s("О приложении", "About")));
         items.add(UItem.asButton(ID_VERSION, R.drawable.msg_info, "RecGram", org.recgram.RecGramVersion.display()));
+        items.add(UItem.asCheck(ID_UPDATES_AUTO, s("Проверять обновления", "Check for updates")).setChecked(org.recgram.update.UpdateChecker.isEnabled()));
+        items.add(UItem.asButton(ID_UPDATES_CHECK, updateChecking ? "⏳ " + s("Проверяю…", "Checking…") : s("Проверить сейчас", "Check now")).accent());
+        if (updateStatus != null) items.add(UItem.asShadow(updateStatus));
         items.add(UItem.asShadow(s(
                 "RecGram — неофициальный клиент Telegram с открытым исходным кодом (GPLv2). Он не связан с Telegram FZ-LLC.",
                 "RecGram is an unofficial open-source Telegram client (GPLv2). It is not affiliated with Telegram FZ-LLC.")));
@@ -130,10 +135,38 @@ public class RecGramSettingsActivity extends UniversalFragment {
             case ID_API:
                 presentFragment(new ApiKeyActivity());
                 return;
+            case ID_UPDATES_AUTO:
+                org.recgram.update.UpdateChecker.setEnabled(!org.recgram.update.UpdateChecker.isEnabled());
+                break;
+            case ID_UPDATES_CHECK:
+                checkUpdatesNow();
+                return;
+            case ID_VERSION:
+                org.recgram.update.UpdateChecker.open(getParentActivity(), org.recgram.update.UpdateChecker.RELEASES);
+                return;
             default:
                 return;
         }
         listView.adapter.update(true);
+    }
+
+    private void checkUpdatesNow() {
+        if (updateChecking) return;
+        updateChecking = true;
+        updateStatus = null;
+        listView.adapter.update(true);
+        org.recgram.update.UpdateChecker.check(r -> {
+            updateChecking = false;
+            if (r != null) {
+                updateStatus = s("Вышла RecGram ", "RecGram ") + r.version + s(".", " is available.");
+                org.recgram.update.UpdateChecker.showDialog(this, r);
+            } else if (org.recgram.update.UpdateChecker.lastError) {
+                updateStatus = s("Не удалось связаться с GitHub. Релизы: ", "Could not reach GitHub. Releases: ") + org.recgram.update.UpdateChecker.RELEASES;
+            } else {
+                updateStatus = s("Установлена последняя версия.", "You have the latest version.");
+            }
+            listView.adapter.update(true);
+        });
     }
 
     private void togglePreserveDeleted() {

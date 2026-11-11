@@ -1,0 +1,78 @@
+# RecGram: следит за новыми версиями Telegram для Android (github.com/DrKLO/Telegram).
+# Раз в сутки смотрит последние коммиты «update to X.Y.Z (код)» в DrKLO/Telegram и сравнивает
+# с APP_VERSION_NAME в gradle.properties. Если вышла новая версия — открывает issue (одно на версию):
+# GitHub присылает о нём уведомление. Само обновление не делается: правки RecGram лежат в коде
+# Telegram, слияние нужно проверять сборкой и на телефоне.
+# Задача короткая (несколько секунд): только запросы к API GitHub, без checkout кода и сборки.
+name: Upstream Telegram
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: upstream-telegram
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      UPSTREAM: DrKLO/Telegram
+    steps:
+      - name: Сравнить версии
+        run: |
+          set -euo pipefail
+          OURS=$(gh api "repos/$GITHUB_REPOSITORY/contents/gradle.properties?ref=${GITHUB_REF_NAME}" --jq .content \
+            | base64 -d | sed -n 's/^APP_VERSION_NAME=//p' | tr -d '\r')
+          # последний коммит вида «update to 13.2.1 (7291)» среди 50 свежих в master
+          LINE=$(gh api "repos/$UPSTREAM/commits?sha=master&per_page=50" \
+            --jq '.[] | select(.commit.message | test("^update to [0-9]+[.][0-9]+([.][0-9]+)? [(][0-9]+[)]")) | .sha + " " + (.commit.message | split("\n")[0])' \
+            | head -1)
+          if [ -z "$LINE" ]; then
+            echo "::warning::В $UPSTREAM не найден коммит «update to …» среди 50 последних"
+            exit 0
+          fi
+          SHA=${LINE%% *}
+          THEIRS=$(echo "$LINE" | sed -E 's/^[0-9a-f]+ update to ([0-9.]+) .*/\1/')
+          CODE=$(echo "$LINE" | sed -E 's/.*\(([0-9]+)\).*/\1/')
+          echo "RecGram основан на Telegram $OURS, последняя версия Telegram — $THEIRS ($CODE)"
+          if [ "$THEIRS" = "$OURS" ]; then
+            echo "Обновление не нужно."
+            exit 0
+          fi
+          # новее ли? (сортировка версий)
+          NEWEST=$(printf '%s\n%s\n' "$OURS" "$THEIRS" | sort -V | tail -1)
+          if [ "$NEWEST" != "$THEIRS" ]; then
+            echo "У RecGram версия новее апстрима — ничего не делаю."
+            exit 0
+          fi
+          TITLE="Вышел Telegram $THEIRS — обновить RecGram"
+          if gh issue list --repo "$GITHUB_REPOSITORY" --state all --search "\"Telegram $THEIRS\" in:title" --json title --jq '.[].title' | grep -qxF "$TITLE"; then
+            echo "Issue «$TITLE» уже есть."
+            exit 0
+          fi
+          BODY=$(cat <<EOF
+          @${GITHUB_REPOSITORY_OWNER} В [$UPSTREAM](https://github.com/$UPSTREAM) вышла версия **Telegram $THEIRS ($CODE)**. RecGram сейчас основан на **$OURS**.
+
+          - Коммит: https://github.com/$UPSTREAM/commit/$SHA
+          - Все изменения в апстриме: https://github.com/$UPSTREAM/commits/master
+
+          Как обновить (локально, не автоматически — правки RecGram лежат прямо в коде Telegram):
+          1. \`git fetch https://github.com/$UPSTREAM.git master\` и \`git merge FETCH_HEAD\` в отдельной ветке, разрешить конфликты.
+          2. \`git submodule update --init --recursive\`, собрать: \`python -I recgram/tools/build_apk.py --install\`.
+          3. Проверить на телефоне вход, звонки и запись, обход блокировок, экспорт.
+          4. Поднять \`RECGRAM_VERSION\` в gradle.properties и выпустить тег \`v<версия>\`.
+
+          Issue создан автоматически workflow «Upstream Telegram».
+          EOF
+          )
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$BODY"
+          echo "Создан issue: $TITLE"
