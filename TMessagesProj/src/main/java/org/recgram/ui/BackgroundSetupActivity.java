@@ -68,7 +68,14 @@ public class BackgroundSetupActivity extends UniversalFragment {
             boolean done = PhoneSetup.isDone(ctx, st);
             boolean auto = PhoneSetup.isAutomatic(ctx, st);
             String mark = done ? "✅ " : auto ? "⚠️ " : "◻️ ";
-            items.add(UItem.asButton(ID_OPEN_BASE + i, mark + st.title, s("Открыть", "Open")));
+            // своя строка: TextCell обрезал длинные названия, оставляя справа место под иконку
+            SplitRow row = new SplitRow(ctx).set(mark + st.title, s("Открыть", "Open"));
+            row.setOnClickListener(v -> {
+                if (!PhoneSetup.open(getParentActivity(), st)) {
+                    Toast.makeText(getParentActivity(), s("Не удалось открыть настройки", "Could not open settings"), Toast.LENGTH_SHORT).show();
+                }
+            });
+            items.add(UItem.asCustom(row));
             if (!auto) {
                 items.add(UItem.asCheck(ID_DONE_BASE + i, s("Сделано", "Done")).setChecked(done));
             }

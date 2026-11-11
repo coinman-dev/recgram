@@ -49,6 +49,17 @@ public class Localization {
         return get(hash);
     }
 
+    /** RecGram: хэш ключа строки для ресурса (имена ресурсов в release-APK стёрты, остаётся только эта таблица). */
+    public static int keyHashForResId(Context context, @StringRes int resId) {
+        if (context == null || resId == 0) {
+            return 0;
+        }
+        if (rawResBindings == null) {
+            rawResBindings = loadStringResBindings(context);
+        }
+        return rawResBindings.get(resId);
+    }
+
     public String getByResName(String resName) {
         if (resName != null) {
             return get(resName.hashCode());

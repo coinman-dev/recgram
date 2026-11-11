@@ -29,8 +29,21 @@ public final class AppNameStrings {
             "AllowBackgroundActivityInfo", "AllowBackgroundActivityInfoOneUIBelowS", "AllowBackgroundActivityInfoOneUIAboveS",
             "SdCardAlert", "SdCardErrorDescription", "AppLocked",
             "LowDiskSpaceMessage", "ClearingCacheDescription", "LocalDatabaseInfo", "ChangePasscodeInfo",
-            "LiveLocationPausedText", "BrowserExternalRestricted"
+            "LiveLocationPausedText", "BrowserExternalRestricted",
+            // Permission* с «Telegram» (по префиксу их не узнать, когда строку просят по номеру ресурса)
+            "PermissionStorageWithHint", "PermissionNoAudioWithHint", "PermissionNoBluetoothWithHint", "PermissionNoAudioVideoWithHint",
+            "PermissionNoCameraWithHint", "PermissionNoCameraMicVideo", "PermissionNoLocation", "PermissionNoLocationStory",
+            "PermissionNoLocationFriends", "PermissionNoLocationNavigation", "PermissionNoContactsSharing", "PermissionNoContactsSaving",
+            "PermissionNoStorageAvatar", "PermissionNoAudioStorageStory", "PermissionDrawAboveOtherApps",
+            "PermissionDrawAboveOtherAppsGroupCall", "PermissionXiaomiLockscreen", "PermissionFSILockscreen", "PermissionBackgroundLocation"
     ));
+
+    /** Хэши тех же ключей: так строки хранит Localization, и только так их узнать по номеру ресурса. */
+    private static final java.util.HashSet<Integer> KEY_HASHES = new java.util.HashSet<>();
+
+    static {
+        for (String k : KEYS) KEY_HASHES.add(k.hashCode());
+    }
 
     private static final SparseArray<Boolean> byRes = new SparseArray<>();
 
@@ -52,12 +65,10 @@ public final class AppNameStrings {
                 cached = byRes.get(res);
             }
             if (cached == null) {
-                String name = null;
-                try {
-                    name = ApplicationLoader.applicationContext.getResources().getResourceEntryName(res);
-                } catch (Throwable ignore) {
-                }
-                cached = matches(name);
+                // в release-APK имена строковых ресурсов стёрты (getResourceEntryName не работает) —
+                // сравниваем хэш ключа из таблицы string_resource_ids.bin
+                int hash = org.telegram.utils.localization.Localization.keyHashForResId(ApplicationLoader.applicationContext, res);
+                cached = hash != 0 && KEY_HASHES.contains(hash);
                 synchronized (byRes) {
                     byRes.put(res, cached);
                 }
