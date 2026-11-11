@@ -32,7 +32,7 @@
 #
 # ДОПОЛНИТЕЛЬНО, только по ключу (вместе с --force; без него — показ):
 #   --caches  кэши сборки вне репозитория: ~/.cache/recgram-xray (исходники
-#             Xray-core), ~/.cache/recgram-awg, ~/Development/recgram-logs.
+#             Xray-core), ~/.cache/recgram-awg.
 #             Общие кэши Gradle и Go (~/.gradle, ~/go) не трогаются — ими
 #             пользуются и другие проекты.
 #
@@ -105,7 +105,6 @@ JUNK_GLOBS=("*.DS_Store" "Thumbs.db" "*Zone.Identifier" "*.swp" "*.swo" "*.orig"
 CACHE_DIRS=(
   "$HOME/.cache/recgram-xray"
   "$HOME/.cache/recgram-awg"
-  "$HOME/Development/recgram-logs"
 )
 
 # Не попадает В АРХИВ, но --force это не трогает.

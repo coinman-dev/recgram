@@ -17,7 +17,7 @@
    или в скрипте сменилась версия (XRAY_TAG); AmneziaWG: recgram/tools/build_awg.sh, если нет libawg.so
    или сменились исходники recgram/awg.
 4. Gradle :TMessagesProj_App:assembleAfatRelease — на экран только основные шаги и ошибки,
-   полный журнал — ~/Development/recgram-logs/build.log в WSL.
+   полный журнал — ~/Development/recgram/tmp/build.log в WSL (tmp/ в .gitignore).
 5. Копирует APK в builds/ и печатает его размер и SHA-256.
 
 Ключ подписи берётся из local.properties в WSL-копии (см. secrets/README.md).
@@ -32,7 +32,7 @@ import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 WSL_REPO = "/home/modulator/Development/recgram"
-WSL_LOG = "/home/modulator/Development/recgram-logs/build.log"
+WSL_LOG = WSL_REPO + "/tmp/build.log"
 APK_IN_WSL = WSL_REPO + "/TMessagesProj_App/build/outputs/apk/afat/release/app.apk"
 
 
