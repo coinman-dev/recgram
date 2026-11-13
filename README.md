@@ -10,7 +10,7 @@
 [![Release](https://img.shields.io/github/v/release/coinman-dev/recgram?include_prereleases&label=release)](https://github.com/coinman-dev/recgram/releases)
 [![Build](https://github.com/coinman-dev/recgram/actions/workflows/release.yml/badge.svg)](https://github.com/coinman-dev/recgram/actions/workflows/release.yml)
 [![Android](https://img.shields.io/badge/Android-6.0%2B%20ARM-green)](#download)
-[![Telegram](https://img.shields.io/badge/based%20on-Telegram%2013.2.1-blue)](https://github.com/DrKLO/Telegram)
+[![Telegram](https://img.shields.io/badge/based%20on-Telegram%2013.2.2-blue)](https://github.com/DrKLO/Telegram)
 [![License](https://img.shields.io/badge/license-GPL--2.0-blue)](LICENSE)
 
 **RecGram** is a fork of the official [Telegram for Android](https://github.com/DrKLO/Telegram)
@@ -207,7 +207,8 @@ New code lives in the `org.recgram` package
 (`TMessagesProj/src/main/java/org/recgram`). Telegram sources contain only small
 hooks, each marked with a `// RecGram` comment; the scripts that apply them are
 in `recgram/tools/patches`. The full list of changes is the git history after
-commit `7be672ead` (Telegram 13.2.1). PNG icons for Android 6–7 are drawn by
+commit `7be672ead` (Telegram 13.2.1); later Telegram releases are merged in
+(now 13.2.2). PNG icons for Android 6–7 are drawn by
 `recgram/tools/make_icons.py` (needs Pillow).
 
 ## Automated releases
@@ -222,7 +223,7 @@ nothing.
 
 The RecGram version is set in `gradle.properties` (`RECGRAM_VERSION`); the tag
 must match it or the build stops. The app shows it together with the Telegram
-version it is based on: "1.0.0 (13.2.1)". Telegram servers only receive the
+version it is based on: "1.0.1 (13.2.2)". Telegram servers only receive the
 Telegram version (`APP_VERSION_NAME`).
 
 ## License

@@ -10,7 +10,7 @@
 [![Release](https://img.shields.io/github/v/release/coinman-dev/recgram?include_prereleases&label=release)](https://github.com/coinman-dev/recgram/releases)
 [![Build](https://github.com/coinman-dev/recgram/actions/workflows/release.yml/badge.svg)](https://github.com/coinman-dev/recgram/actions/workflows/release.yml)
 [![Android](https://img.shields.io/badge/Android-6.0%2B%20ARM-green)](#скачать)
-[![Telegram](https://img.shields.io/badge/based%20on-Telegram%2013.2.1-blue)](https://github.com/DrKLO/Telegram)
+[![Telegram](https://img.shields.io/badge/based%20on-Telegram%2013.2.2-blue)](https://github.com/DrKLO/Telegram)
 [![License](https://img.shields.io/badge/license-GPL--2.0-blue)](LICENSE)
 
 **RecGram** — форк официального приложения [Telegram for Android](https://github.com/DrKLO/Telegram).
@@ -199,7 +199,8 @@ VLESS покажет, что Xray не входит в сборку.
 В исходники Telegram внесены только точечные вызовы, каждый отмечен
 комментарием `// RecGram`; скрипты, которыми они вносятся, — в
 `recgram/tools/patches`. Полный список изменений — история git после коммита
-`7be672ead` (Telegram 13.2.1). PNG-иконки для Android 6–7 рисует
+`7be672ead` (Telegram 13.2.1); новые версии Telegram вливаются в неё слиянием
+(сейчас 13.2.2). PNG-иконки для Android 6–7 рисует
 `recgram/tools/make_icons.py` (нужен Pillow).
 
 ## Автоматические релизы
@@ -213,7 +214,7 @@ VLESS покажет, что Xray не входит в сборку.
 
 Версия RecGram задаётся в `gradle.properties` (`RECGRAM_VERSION`), тег должен
 с ней совпадать, иначе сборка остановится. Приложение показывает её вместе с
-версией Telegram, на которой основано: «1.0.0 (13.2.1)». Серверам Telegram
+версией Telegram, на которой основано: «1.0.1 (13.2.2)». Серверам Telegram
 уходит только версия Telegram (`APP_VERSION_NAME`).
 
 ## Лицензия
