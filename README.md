@@ -10,10 +10,10 @@
 [![Release](https://img.shields.io/github/v/release/coinman-dev/recgram?include_prereleases&label=release)](https://github.com/coinman-dev/recgram/releases)
 [![Build](https://github.com/coinman-dev/recgram/actions/workflows/release.yml/badge.svg)](https://github.com/coinman-dev/recgram/actions/workflows/release.yml)
 [![Android](https://img.shields.io/badge/Android-6.0%2B%20ARM-green)](#download)
-[![Telegram](https://img.shields.io/badge/based%20on-Telegram%2013.2.2-blue)](https://github.com/DrKLO/Telegram)
+[![Telegram](https://img.shields.io/badge/based%20on-Telegram%2013.2.2-blue)](https://github.com/TelegramMessenger/Telegram-Android)
 [![License](https://img.shields.io/badge/license-GPL--2.0-blue)](LICENSE)
 
-**RecGram** is a fork of the official [Telegram for Android](https://github.com/DrKLO/Telegram)
+**RecGram** is a fork of the official [Telegram for Android](https://github.com/TelegramMessenger/Telegram-Android)
 app. It records voice and video calls, lets you choose the recording rules
 of the country you are in, warns the other party about the recording, and
 can unlock screenshots, copying and saving in protected chats. Everything

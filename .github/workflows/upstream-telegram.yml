@@ -1,5 +1,5 @@
-# RecGram: следит за новыми версиями Telegram для Android (github.com/DrKLO/Telegram).
-# Раз в сутки смотрит последние коммиты «update to X.Y.Z (код)» в DrKLO/Telegram и сравнивает
+# RecGram: следит за новыми версиями Telegram для Android (github.com/TelegramMessenger/Telegram-Android).
+# Раз в сутки смотрит последние коммиты «update to X.Y.Z (код)» в TelegramMessenger/Telegram-Android и сравнивает
 # с APP_VERSION_NAME в gradle.properties. Если вышла новая версия — открывает issue (одно на версию):
 # GitHub присылает о нём уведомление. Само обновление не делается: правки RecGram лежат в коде
 # Telegram, слияние нужно проверять сборкой и на телефоне.
@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 5
     env:
       GH_TOKEN: ${{ github.token }}
-      UPSTREAM: DrKLO/Telegram
+      UPSTREAM: TelegramMessenger/Telegram-Android
     steps:
       - name: Сравнить версии
         run: |

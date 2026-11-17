@@ -10,10 +10,10 @@
 [![Release](https://img.shields.io/github/v/release/coinman-dev/recgram?include_prereleases&label=release)](https://github.com/coinman-dev/recgram/releases)
 [![Build](https://github.com/coinman-dev/recgram/actions/workflows/release.yml/badge.svg)](https://github.com/coinman-dev/recgram/actions/workflows/release.yml)
 [![Android](https://img.shields.io/badge/Android-6.0%2B%20ARM-green)](#скачать)
-[![Telegram](https://img.shields.io/badge/based%20on-Telegram%2013.2.2-blue)](https://github.com/DrKLO/Telegram)
+[![Telegram](https://img.shields.io/badge/based%20on-Telegram%2013.2.2-blue)](https://github.com/TelegramMessenger/Telegram-Android)
 [![License](https://img.shields.io/badge/license-GPL--2.0-blue)](LICENSE)
 
-**RecGram** — форк официального приложения [Telegram for Android](https://github.com/DrKLO/Telegram).
+**RecGram** — форк официального приложения [Telegram for Android](https://github.com/TelegramMessenger/Telegram-Android).
 Он записывает аудио- и видеозвонки, учитывает правила записи страны, в которой
 вы находитесь, предупреждает собеседника о записи и может снять запрет на
 скриншоты, копирование и сохранение в защищённых чатах. Всё остальное работает
