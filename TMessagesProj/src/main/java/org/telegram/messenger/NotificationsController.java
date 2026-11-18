@@ -4978,7 +4978,9 @@ public class NotificationsController extends BaseController implements Notificat
 
         ArrayList<NotificationHolder> holders = new ArrayList<>();
 
-        boolean useSummaryNotification = Build.VERSION.SDK_INT <= Build.VERSION_CODES.O_MR1 || sortedDialogs.size() > (storyPushMessages.isEmpty() ? 1 : 2);
+        // RecGram: на Android 8+ без общей группы — каждый чат отдельной карточкой. С группой Samsung и другие
+        // сворачивают все чаты в одну стопку под последним («Walt … 3»), и не видно, от кого ещё сообщения.
+        boolean useSummaryNotification = Build.VERSION.SDK_INT <= Build.VERSION_CODES.O_MR1;
         if (useSummaryNotification && Build.VERSION.SDK_INT >= 26) {
             checkOtherNotificationsChannel();
         }
@@ -5691,6 +5693,9 @@ public class NotificationsController extends BaseController implements Notificat
             if (useSummaryNotification) {
                 builder.setGroup(notificationGroup);
                 builder.setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY);
+            } else {
+                // RecGram: своя группа у каждого чата — иначе Android сам сложит 4+ карточки приложения в одну
+                builder.setGroup(notificationGroup + "_" + dialogId + "_" + topicId + (dialogKey.story ? "_s" : ""));
             }
 
             TL_keyboard.KeyboardInlineButton copybutton = null;
