@@ -3342,6 +3342,7 @@ public class NotificationsController extends BaseController implements Notificat
     public void hideNotifications() {
         notificationsQueue.postRunnable(() -> {
             notificationManager.cancel(notificationId);
+            org.recgram.BotNotifications.cancelSummary(currentAccount); // RecGram
             lastWearNotifiedMessageId.clear();
             for (int a = 0; a < wearNotificationsIds.size(); a++) {
                 notificationManager.cancel(wearNotificationsIds.valueAt(a));
@@ -3354,6 +3355,7 @@ public class NotificationsController extends BaseController implements Notificat
         FileLog.d("NotificationsController dismissNotification");
         try {
             notificationManager.cancel(notificationId);
+            org.recgram.BotNotifications.cancelSummary(currentAccount); // RecGram
             pushMessages.clear();
             pushMessagesDict.clear();
             lastWearNotifiedMessageId.clear();
@@ -3465,6 +3467,7 @@ public class NotificationsController extends BaseController implements Notificat
             int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
             if (hour >= 11 && hour <= 22) {
                 notificationManager.cancel(notificationId);
+            org.recgram.BotNotifications.cancelSummary(currentAccount); // RecGram
                 showOrUpdateNotification(true);
             } else {
                 scheduleNotificationRepeat();
@@ -4978,12 +4981,21 @@ public class NotificationsController extends BaseController implements Notificat
 
         ArrayList<NotificationHolder> holders = new ArrayList<>();
 
-        // RecGram: на Android 8+ без общей группы — каждый чат отдельной карточкой. С группой Samsung и другие
-        // сворачивают все чаты в одну стопку под последним («Walt … 3»), и не видно, от кого ещё сообщения.
-        boolean useSummaryNotification = Build.VERSION.SDK_INT <= Build.VERSION_CODES.O_MR1;
+        boolean useSummaryNotification = Build.VERSION.SDK_INT <= Build.VERSION_CODES.O_MR1 || sortedDialogs.size() > (storyPushMessages.isEmpty() ? 1 : 2);
         if (useSummaryNotification && Build.VERSION.SDK_INT >= 26) {
             checkOtherNotificationsChannel();
         }
+        // RecGram: боты — своей стопкой, если есть и боты, и обычные чаты (org.recgram.BotNotifications)
+        boolean recgramHasBots = false, recgramHasPeople = false;
+        for (DialogKey dk : sortedDialogs) {
+            if (!dk.story && org.recgram.BotNotifications.isBot(currentAccount, dk.dialogId)) {
+                recgramHasBots = true;
+            } else {
+                recgramHasPeople = true;
+            }
+        }
+        final boolean recgramSplitBots = useSummaryNotification && Build.VERSION.SDK_INT >= 26 && recgramHasBots && recgramHasPeople;
+        ArrayList<String> recgramBotNames = new ArrayList<>();
 
         long selfUserId = getUserConfig().getClientUserId();
         boolean waitingForPasscode = AndroidUtilities.needShowPasscode() || SharedConfig.isWaitingForPasscodeEnter;
@@ -5691,11 +5703,13 @@ public class NotificationsController extends BaseController implements Notificat
             }
 
             if (useSummaryNotification) {
-                builder.setGroup(notificationGroup);
+                if (recgramSplitBots && !dialogKey.story && org.recgram.BotNotifications.isBot(currentAccount, dialogId)) {
+                    builder.setGroup(org.recgram.BotNotifications.group(notificationGroup)); // RecGram
+                    recgramBotNames.add(name);
+                } else {
+                    builder.setGroup(notificationGroup);
+                }
                 builder.setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY);
-            } else {
-                // RecGram: своя группа у каждого чата — иначе Android сам сложит 4+ карточки приложения в одну
-                builder.setGroup(notificationGroup + "_" + dialogId + "_" + topicId + (dialogKey.story ? "_s" : ""));
             }
 
             TL_keyboard.KeyboardInlineButton copybutton = null;
@@ -5777,6 +5791,11 @@ public class NotificationsController extends BaseController implements Notificat
             wearNotificationsIds.put(dialogId, internalId);
         }
 
+        if (recgramSplitBots && !recgramBotNames.isEmpty()) {
+            org.recgram.BotNotifications.showSummary(currentAccount, notificationGroup, OTHER_NOTIFICATIONS_CHANNEL, recgramBotNames);
+        } else {
+            org.recgram.BotNotifications.cancelSummary(currentAccount);
+        }
         if (useSummaryNotification) {
             if (BuildVars.LOGS_ENABLED) {
                 FileLog.d("show summary with id " + notificationId);
@@ -5793,6 +5812,7 @@ public class NotificationsController extends BaseController implements Notificat
                     FileLog.d("cancel summary with id " + notificationId);
                 }
                 notificationManager.cancel(notificationId);
+            org.recgram.BotNotifications.cancelSummary(currentAccount); // RecGram
             }
         }
 
